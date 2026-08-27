@@ -2,26 +2,28 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>音階音響通信 (モード手動選択・高耐性版)</title>
+  <title>音階音響通信 (高速モード同期改善・キャンセル付き)</title>
   <style>
     body { font-family: sans-serif; max-width: 640px; margin: 20px auto; padding: 15px; background: #f4f6f8; }
     .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
     textarea { width: 100%; height: 60px; margin-bottom: 10px; box-sizing: border-box; font-size: 16px; }
     button { padding: 12px 20px; font-size: 15px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; margin-right: 8px; }
-    button:disabled { background: #ccc; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
     .btn-send { background: #28a745; }
     .btn-listen { background: #007bff; }
+    .btn-cancel { background: #dc3545; }
     select { padding: 10px; font-size: 15px; border-radius: 6px; margin-bottom: 10px; margin-right: 10px; }
     .status { margin-top: 10px; font-size: 14px; font-weight: bold; color: #d9534f; }
     .result { font-size: 26px; font-weight: bold; color: #007bff; padding: 12px; background: #e8f4ff; border-radius: 6px; min-height: 36px; word-break: break-all; margin-top: 10px; text-align: center; }
     .log { font-family: monospace; font-size: 11px; color: #333; background: #eee; padding: 8px; border-radius: 4px; margin-top: 10px; height: 160px; overflow-y: auto; white-space: pre-wrap; }
     .mode-group { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
     .mode-group label { font-weight: bold; }
+    .btn-group { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
   </style>
 </head>
 <body>
 
-  <h2>🎵 音階音響通信 (モード手動選択)</h2>
+  <h2>🎵 音階音響通信 (モード手動選択 + キャンセル機能)</h2>
 
   <div class="card">
     <h3>1. 送信設定</h3>
@@ -47,7 +49,10 @@
         <option value="fast">⚡ 高速モード (45ms×2)</option>
       </select>
     </div>
-    <button class="btn-listen" id="btnListen">🎤 マイクで受信開始</button>
+    <div class="btn-group">
+      <button class="btn-listen" id="btnListen">🎤 マイクで受信開始</button>
+      <button class="btn-cancel" id="btnCancel" disabled>⏹️ 受信キャンセル</button>
+    </div>
     <div id="status" class="status">待機中</div>
     <div id="outputText" class="result">---</div>
     <div id="log" class="log">ログがここに表示されます</div>
@@ -113,7 +118,6 @@ function buildBits(text, isFast) {
     rawBits.push(...encodeByteTo14Bits(b));
   }
 
-  // 繰り返し (高速:2回, 正確:3回)
   const repeat = isFast ? 2 : 3;
   let repeated = [];
   for (let bit of rawBits) {
@@ -122,7 +126,6 @@ function buildBits(text, isFast) {
   return repeated;
 }
 
-// 送信実行
 document.getElementById('btnPlay').onclick = () => {
   const ctx = getCtx();
   const text = document.getElementById('inputText').value;
@@ -130,7 +133,7 @@ document.getElementById('btnPlay').onclick = () => {
   if (!text) return;
 
   const bits = buildBits(text, isFast);
-  const tBit = isFast ? 0.045 : 0.100;       // 1ビットの長さ (秒)
+  const tBit = isFast ? 0.045 : 0.100;
   const now = ctx.currentTime + 0.1;
 
   const osc = ctx.createOscillator();
@@ -143,7 +146,6 @@ document.getElementById('btnPlay').onclick = () => {
   gain.gain.setValueAtTime(0, now);
   gain.gain.linearRampToValueAtTime(0.2, now + 0.03);
 
-  // FSKデータ
   let t = now + 0.3;
   bits.forEach((bit) => {
     osc.frequency.setValueAtTime(bit === 1 ? FREQ_1 : FREQ_0, t);
@@ -155,27 +157,65 @@ document.getElementById('btnPlay').onclick = () => {
 
   osc.start(now);
   osc.stop(t);
-
   log(`送信: ${text} (${isFast ? '高速' : '正確'}モード, ${bits.length}ビット)`);
 };
 
-// ---------- 受信側 ----------
+// ---------- 受信側 (キャンセル対応・パイロット立ち下がり検出) ----------
+let receiveLoopId = null;
+let mediaStream = null;
+let isReceiving = false;
+
+function stopReceive(resetUI = true) {
+  if (receiveLoopId) {
+    clearInterval(receiveLoopId);
+    receiveLoopId = null;
+  }
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(t => t.stop());
+    mediaStream = null;
+  }
+  isReceiving = false;
+  document.getElementById('btnListen').disabled = false;
+  document.getElementById('btnCancel').disabled = true;
+  if (resetUI) {
+    document.getElementById('status').textContent = '⏹️ 受信キャンセルされました';
+    document.getElementById('status').style.color = '#d9534f';
+  }
+}
+
+document.getElementById('btnCancel').onclick = () => {
+  log('⚠️ ユーザーにより受信キャンセル');
+  stopReceive(true);
+};
+
 document.getElementById('btnListen').onclick = async () => {
   const btn = document.getElementById('btnListen');
   const status = document.getElementById('status');
   const logEl = document.getElementById('log');
   const output = document.getElementById('outputText');
+  
+  // 既存受信があれば停止
+  if (isReceiving) stopReceive(false);
+  
   logEl.textContent = "--- ログ開始 ---";
   output.textContent = "---";
   btn.disabled = true;
+  document.getElementById('btnCancel').disabled = false;
   status.textContent = "🎤 マイク起動中...";
+  status.style.color = '#d9534f';
 
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
-  });
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+    });
+  } catch(e) {
+    log('❌ マイクアクセス拒否: ' + e.message);
+    stopReceive(true);
+    return;
+  }
 
   const ctx = getCtx();
-  const source = ctx.createMediaStreamSource(stream);
+  const source = ctx.createMediaStreamSource(mediaStream);
   const analyser = ctx.createAnalyser();
   analyser.fftSize = 2048;
   source.connect(analyser);
@@ -187,121 +227,175 @@ document.getElementById('btnListen').onclick = async () => {
 
   const data = new Uint8Array(analyser.frequencyBinCount);
 
-  // 受信モード
   const rxMode = document.getElementById('rxMode').value;
   const isFast = rxMode === 'fast';
-  const tBitMs = isFast ? 45 : 100;          // 1ビットの長さ (ms)
-  const repeat = isFast ? 2 : 3;             // 繰り返し回数
-  const symbolMs = tBitMs * repeat;          // 1シンボル (ビット判定単位) の長さ
+  const tBitMs = isFast ? 45 : 100;
+  const repeat = isFast ? 2 : 3;
   log(`受信モード: ${isFast ? '高速' : '正確'} (ビット長${tBitMs}ms × ${repeat}回)`);
 
-  // スタート音検出閾値
   const ST_THRESHOLD = 55;
-  let listening = false;          // データ受信中か
-  let startDetected = false;      // スタート音を検出済みか
-  let stStartTime = 0;            // スタート音が立ち上がった時刻
+  let state = 'idle'; // idle -> pilot_on -> pilot_off -> receiving
+  let pilotStartTime = 0;
+  let pilotEndTime = 0;
+  let dataStartTime = 0;
+  
+  let rawSamples = [];
+  let bitStream = [];
+  let currentBitStart = 0;
+  let currentBitEnd = 0;
+  let bitIndex = 0;
+  let totalBits = 0;
+  let headerDecoded = false;
+  let headerDataLen = 0;
+  let receiveCompleted = false;
 
-  let rawSamples = [];            // 現在のビット期間内のサンプル { val0, val1 }
-  let bitStream = [];             // 判定済みビット列 (繰り返しはまとめられていない生のビット)
-  let currentBitStart = 0;        // 現在のビット期間の開始時刻
-  let currentBitEnd = 0;          // 終了時刻
-  let bitIndex = 0;              // 現在のビット番号 (ビットストリーム内)
-  let totalBits = 0;             // 受信すべき総ビット数 (後で設定)
-  let headerDecoded = false;     // ヘッダーをデコード済みか
+  // リセット関数（受信中は状態だけリセット）
+  function resetReceiveState() {
+    state = 'idle';
+    pilotStartTime = 0;
+    pilotEndTime = 0;
+    dataStartTime = 0;
+    rawSamples = [];
+    bitStream = [];
+    currentBitStart = 0;
+    currentBitEnd = 0;
+    bitIndex = 0;
+    totalBits = 0;
+    headerDecoded = false;
+    headerDataLen = 0;
+    receiveCompleted = false;
+  }
 
-  // 受信ループ (5ms間隔)
-  const loop = setInterval(() => {
+  receiveLoopId = setInterval(() => {
     analyser.getByteFrequencyData(data);
     const now = Date.now();
 
-    // ---- スタート音検出 ----
-    if (!startDetected) {
-      if (data[bST] > ST_THRESHOLD) {
-        if (!listening) {
-          stStartTime = now;
-          listening = true;
-          status.textContent = "📡 スタート音を検出！ データ受信開始...";
-          log("スタート音検出 (ソ)");
-          // スタート音は300ms続くので、データ開始は stStartTime + 300
-          const dataStart = stStartTime + 300;
-          currentBitStart = dataStart;
-          currentBitEnd = dataStart + tBitMs;
-          bitIndex = 0;
-          rawSamples = [];
-          bitStream = [];
-          headerDecoded = false;
-          startDetected = true;
-        }
+    // ---- キャンセルチェック ----
+    if (!isReceiving) {
+      // isReceivingはstopReceiveでfalseになるが、ループ内で参照
+      return;
+    }
+
+    // ---- 状態遷移 ----
+    const stPower = data[bST];
+    const isPilotOn = stPower > ST_THRESHOLD;
+
+    if (state === 'idle') {
+      if (isPilotOn) {
+        state = 'pilot_on';
+        pilotStartTime = now;
+        status.textContent = '📡 スタート音(ソ)を検出中...';
+        log('スタート音 ON 検出');
       }
       return;
     }
 
-    // ---- データ受信フェーズ ----
-    if (!startDetected) return;
-
-    // 現在のビット期間内のサンプルを収集
-    if (now >= currentBitStart && now < currentBitEnd) {
-      rawSamples.push({ val0: data[b0], val1: data[b1] });
-    }
-
-    // ビット期間終了 → ビット判定
-    if (now >= currentBitEnd) {
-      // バッファが空でない場合のみ判定
-      if (rawSamples.length > 0) {
-        let sum0 = 0, sum1 = 0;
-        for (let s of rawSamples) {
-          sum0 += s.val0;
-          sum1 += s.val1;
-        }
-        // 平均値で判定 (1の方が強ければ1)
-        const bit = (sum1 / rawSamples.length) > (sum0 / rawSamples.length) ? 1 : 0;
-        bitStream.push(bit);
-        bitIndex++;
-        status.textContent = `📥 受信中... ${bitIndex} ビット`;
-      }
-
-      // 次のビット期間へ
-      currentBitStart = currentBitEnd;
-      currentBitEnd = currentBitStart + tBitMs;
-      rawSamples = [];
-
-      // ---- ヘッダー判読 (最初の 14 * repeat ビットが揃ったら) ----
-      if (!headerDecoded && bitStream.length >= 14 * repeat) {
-        // 最初の 14*repeat ビットを切り出し、デコード
-        const headerRaw = bitStream.slice(0, 14 * repeat);
-        // 繰り返しをまとめてデコード
-        const headerByte = decodeBitsToByte(headerRaw, repeat);
-        const isFastFromHeader = ((headerByte >> 7) & 1) === 1;
-        const dataLen = headerByte & 0x7F;
-        // モードが一致しているかチェック (一応)
-        if (isFastFromHeader !== isFast) {
-          log(`⚠️ ヘッダーモード(${isFastFromHeader?'高速':'正確'})が受信設定(${isFast?'高速':'正確'})と異なります。継続します。`);
-        }
-        totalBits = (1 + dataLen) * 14 * repeat;  // ヘッダー1バイト + データ
-        headerDecoded = true;
-        log(`ヘッダー復号: データ長=${dataLen}バイト, 総ビット数=${totalBits}`);
-        status.textContent = `📥 受信中... (${bitIndex}/${totalBits} ビット)`;
-      }
-
-      // ---- 全ビット受信完了 ----
-      if (headerDecoded && bitStream.length >= totalBits) {
-        clearInterval(loop);
-        stream.getTracks().forEach(t => t.stop());
-        btn.disabled = false;
-        status.textContent = "✅ 受信完了";
-        log(`受信完了 (${bitStream.length} ビット)`);
-        // デコード実行
-        decodeStream(bitStream, repeat);
+    if (state === 'pilot_on') {
+      if (!isPilotOn) {
+        // パイロット音の立ち下がりを検出 → ここからデータが始まる！
+        pilotEndTime = now;
+        state = 'pilot_off';
+        // データ開始はパイロット終了直後（+ 数msのガードを入れても良いが、ぴったり合わせる）
+        dataStartTime = pilotEndTime + 5; // 5msの微小マージン（減衰の影響を吸収）
+        currentBitStart = dataStartTime;
+        currentBitEnd = dataStartTime + tBitMs;
+        bitIndex = 0;
+        rawSamples = [];
+        bitStream = [];
+        headerDecoded = false;
+        status.textContent = '⚡ パイロット終了 → データ受信開始';
+        log(`パイロット OFF 検出 (${pilotEndTime - pilotStartTime}ms) データ開始`);
         return;
       }
+      // パイロットが長すぎる場合の安全策（500ms超でタイムアウト）
+      if (now - pilotStartTime > 500) {
+        log('⚠️ パイロット音が長すぎるためリセット');
+        resetReceiveState();
+        status.textContent = '🔄 リセット（パイロットタイムアウト）';
+      }
+      return;
     }
-  }, 5); // 5ms 間隔でサンプリング
+
+    // ---- データ受信フェーズ (state === 'pilot_off' または 'receiving') ----
+    if (state === 'pilot_off' || state === 'receiving') {
+      if (state === 'pilot_off') state = 'receiving';
+      
+      // 現在のビット期間内のサンプルを収集
+      if (now >= currentBitStart && now < currentBitEnd) {
+        rawSamples.push({ val0: data[b0], val1: data[b1] });
+      }
+
+      // ビット期間終了 → ビット判定
+      if (now >= currentBitEnd) {
+        if (rawSamples.length > 0) {
+          let sum0 = 0, sum1 = 0;
+          for (let s of rawSamples) {
+            sum0 += s.val0;
+            sum1 += s.val1;
+          }
+          const bit = (sum1 / rawSamples.length) > (sum0 / rawSamples.length) ? 1 : 0;
+          bitStream.push(bit);
+          bitIndex++;
+          status.textContent = `📥 受信中... ${bitIndex} ビット`;
+        }
+
+        currentBitStart = currentBitEnd;
+        currentBitEnd = currentBitStart + tBitMs;
+        rawSamples = [];
+
+        // ---- ヘッダー判読 ----
+        if (!headerDecoded && bitStream.length >= 14 * repeat) {
+          const headerRaw = bitStream.slice(0, 14 * repeat);
+          const headerByte = decodeBitsToByte(headerRaw, repeat);
+          const isFastFromHeader = ((headerByte >> 7) & 1) === 1;
+          const dataLen = headerByte & 0x7F;
+          
+          // データ長が異常に大きい場合はエラーとしてリセット
+          if (dataLen > 200) {
+            log(`❌ 異常なデータ長(${dataLen})を検出。受信をリセットします。`);
+            resetReceiveState();
+            status.textContent = '🔄 リセット（異常ヘッダー）';
+            return;
+          }
+          
+          if (isFastFromHeader !== isFast) {
+            log(`⚠️ ヘッダーモード(${isFastFromHeader?'高速':'正確'})が受信設定(${isFast?'高速':'正確'})と異なりますが継続します。`);
+          }
+          totalBits = (1 + dataLen) * 14 * repeat;
+          headerDecoded = true;
+          headerDataLen = dataLen;
+          log(`ヘッダー復号: データ長=${dataLen}バイト, 総ビット数=${totalBits}`);
+          status.textContent = `📥 受信中... (${bitIndex}/${totalBits} ビット)`;
+        }
+
+        // ---- 全ビット受信完了 ----
+        if (headerDecoded && bitStream.length >= totalBits && !receiveCompleted) {
+          receiveCompleted = true;
+          log(`受信完了 (${bitStream.length} ビット)`);
+          // ループを止めてデコード
+          clearInterval(receiveLoopId);
+          receiveLoopId = null;
+          mediaStream.getTracks().forEach(t => t.stop());
+          mediaStream = null;
+          isReceiving = false;
+          document.getElementById('btnListen').disabled = false;
+          document.getElementById('btnCancel').disabled = true;
+          status.textContent = '✅ 受信完了';
+          status.style.color = '#28a745';
+          
+          // デコード実行
+          decodeStream(bitStream, repeat);
+          return;
+        }
+      }
+    }
+  }, 5);
+
+  isReceiving = true;
 };
 
 // ---------- デコードユーティリティ ----------
 function decodeBitsToByte(rawBits, repeat) {
-  // rawBits は繰り返しを含むビット列 (長さ 14*repeat)
-  // repeat ごとに多数決を取って14ビットに縮約
   let voted = [];
   for (let i = 0; i < rawBits.length; i += repeat) {
     let sum = 0;
@@ -310,7 +404,8 @@ function decodeBitsToByte(rawBits, repeat) {
     }
     voted.push(sum >= repeat/2 ? 1 : 0);
   }
-  // voted は14ビット (ハミング符号化された2つの7ビット)
+  // voted は14ビット
+  if (voted.length < 14) return 0;
   const highCode = voted.slice(0, 7).reduce((acc, b) => (acc << 1) | b, 0);
   const lowCode  = voted.slice(7, 14).reduce((acc, b) => (acc << 1) | b, 0);
   return (decodeHamming(highCode) << 4) | decodeHamming(lowCode);
@@ -318,19 +413,18 @@ function decodeBitsToByte(rawBits, repeat) {
 
 function decodeStream(bitStream, repeat) {
   const output = document.getElementById('outputText');
-  const bitsPerByte = 14 * repeat;   // 1バイトあたりのビット数
+  const bitsPerByte = 14 * repeat;
 
-  // ヘッダー (最初の1バイト)
   const headerRaw = bitStream.slice(0, bitsPerByte);
   const headerByte = decodeBitsToByte(headerRaw, repeat);
   const dataLen = headerByte & 0x7F;
-  log(`ヘッダー: データ長=${dataLen}`);
+  log(`デコード: データ長=${dataLen}`);
 
   let bytes = [];
   for (let i = 0; i < dataLen; i++) {
     const offset = (1 + i) * bitsPerByte;
+    if (offset + bitsPerByte > bitStream.length) break;
     const raw = bitStream.slice(offset, offset + bitsPerByte);
-    if (raw.length < bitsPerByte) break;
     const b = decodeBitsToByte(raw, repeat);
     bytes.push(b);
   }
@@ -344,6 +438,11 @@ function decodeStream(bitStream, repeat) {
     output.textContent = "デコードエラー";
   }
 }
+
+// ページアンロード時に受信停止
+window.addEventListener('beforeunload', () => {
+  if (isReceiving) stopReceive(false);
+});
 </script>
 </body>
 </html>
