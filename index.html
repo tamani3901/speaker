@@ -2,54 +2,62 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>音階音響通信 (モード分離版)</title>
+  <title>音階音響通信 (モード手動選択・高耐性版)</title>
   <style>
-    body { font-family: sans-serif; max-width: 600px; margin: 20px auto; padding: 15px; background: #f4f6f8; }
+    body { font-family: sans-serif; max-width: 640px; margin: 20px auto; padding: 15px; background: #f4f6f8; }
     .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
     textarea { width: 100%; height: 60px; margin-bottom: 10px; box-sizing: border-box; font-size: 16px; }
-    button { padding: 12px 20px; font-size: 15px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; background: #28a745; color: white; margin-right: 8px; }
+    button { padding: 12px 20px; font-size: 15px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; margin-right: 8px; }
     button:disabled { background: #ccc; }
-    select { padding: 10px; font-size: 15px; border-radius: 6px; margin-bottom: 10px; }
-    .status { margin-top: 10px; font-size: 14px; color: #d9534f; font-weight: bold; }
-    .result { font-size: 26px; font-weight: bold; color: #007bff; padding: 12px; background: #e8f4ff; border-radius: 6px; min-height: 36px; word-break: break-all; margin-top: 10px; text-align: center;}
+    .btn-send { background: #28a745; }
+    .btn-listen { background: #007bff; }
+    select { padding: 10px; font-size: 15px; border-radius: 6px; margin-bottom: 10px; margin-right: 10px; }
+    .status { margin-top: 10px; font-size: 14px; font-weight: bold; color: #d9534f; }
+    .result { font-size: 26px; font-weight: bold; color: #007bff; padding: 12px; background: #e8f4ff; border-radius: 6px; min-height: 36px; word-break: break-all; margin-top: 10px; text-align: center; }
     .log { font-family: monospace; font-size: 11px; color: #333; background: #eee; padding: 8px; border-radius: 4px; margin-top: 10px; height: 160px; overflow-y: auto; white-space: pre-wrap; }
+    .mode-group { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .mode-group label { font-weight: bold; }
   </style>
 </head>
 <body>
 
-  <h2>🎵 音階音響通信</h2>
+  <h2>🎵 音階音響通信 (モード手動選択)</h2>
 
   <div class="card">
-    <h3>1. 送信</h3>
-    <label>送信モード: </label>
-    <select id="txModeSelect">
-      <option value="fast">⚡ 高速モード (45ms / 単一送信)</option>
-      <option value="accurate">🛡️ 正確モード (100ms / 3回重複)</option>
-    </select>
-    <textarea id="inputText" placeholder="文字列を入力">Hello</textarea>
+    <h3>1. 送信設定</h3>
+    <div class="mode-group">
+      <label>送信モード: </label>
+      <select id="txMode">
+        <option value="accurate">🛡️ 正確モード (100ms×3)</option>
+        <option value="fast">⚡ 高速モード (45ms×2)</option>
+      </select>
+    </div>
+    <textarea id="inputText" placeholder="送信する文字列">Hello</textarea>
     <div>
-      <button id="btnPlay">音で送信</button>
+      <button class="btn-send" id="btnPlay">🔊 音で送信</button>
     </div>
   </div>
 
   <div class="card">
-    <h3>2. 受信</h3>
-    <label>受信モード: </label>
-    <select id="rxModeSelect">
-      <option value="fast">⚡ 高速モード (45ms用)</option>
-      <option value="accurate">🛡️ 正確モード (100ms用)</option>
-    </select>
-    <br><br>
-    <button id="btnListen" style="background:#007bff;">マイクで受信開始</button>
+    <h3>2. 受信設定</h3>
+    <div class="mode-group">
+      <label>受信モード: </label>
+      <select id="rxMode">
+        <option value="accurate">🛡️ 正確モード (100ms×3)</option>
+        <option value="fast">⚡ 高速モード (45ms×2)</option>
+      </select>
+    </div>
+    <button class="btn-listen" id="btnListen">🎤 マイクで受信開始</button>
     <div id="status" class="status">待機中</div>
     <div id="outputText" class="result">---</div>
     <div id="log" class="log">ログがここに表示されます</div>
   </div>
 
 <script>
-const FREQ_0  = 523.25; // ド
-const FREQ_1  = 659.25; // ミ
-const FREQ_ST = 783.99; // ソ
+// 音階 (C5: ド, E5: ミ, G5: ソ)
+const FREQ_0  = 523.25; // Bit 0
+const FREQ_1  = 659.25; // Bit 1
+const FREQ_ST = 783.99; // スタート音
 
 let audioCtx = null;
 function getCtx() {
@@ -63,6 +71,7 @@ function log(msg) {
   el.scrollTop = el.scrollHeight;
 }
 
+// ---------- ハミング符号 (7,4) ----------
 function encodeHamming(d4) {
   const d = [(d4>>3)&1, (d4>>2)&1, (d4>>1)&1, d4&1];
   const p1 = d[0] ^ d[1] ^ d[3];
@@ -91,36 +100,37 @@ function encodeByteTo14Bits(byteVal) {
   return bits;
 }
 
+// ---------- 送信側 ----------
 function buildBits(text, isFast) {
   const bytes = new TextEncoder().encode(text);
-  let rawBits = [];  
-  
-  // 文字数のみをヘッダとして入れる (1byte = 14bits)
-  rawBits.push(...encodeByteTo14Bits(bytes.length & 0xFF));
+  let rawBits = [];
+
+  // ヘッダー: [モードフラグ(0/1)][データ長(7bit)]
+  const header = (isFast ? 1 : 0) << 7 | (bytes.length & 0x7F);
+  rawBits.push(...encodeByteTo14Bits(header));
 
   for (let b of bytes) {
     rawBits.push(...encodeByteTo14Bits(b));
   }
 
-  if (isFast) return rawBits;
-
-  // 正確モードなら3回重複
-  let expanded = [];
+  // 繰り返し (高速:2回, 正確:3回)
+  const repeat = isFast ? 2 : 3;
+  let repeated = [];
   for (let bit of rawBits) {
-    expanded.push(bit, bit, bit);
+    for (let i = 0; i < repeat; i++) repeated.push(bit);
   }
-  return expanded;
+  return repeated;
 }
 
-// 送信処理
+// 送信実行
 document.getElementById('btnPlay').onclick = () => {
   const ctx = getCtx();
   const text = document.getElementById('inputText').value;
-  const isFast = document.getElementById('txModeSelect').value === 'fast';
+  const isFast = document.getElementById('txMode').value === 'fast';
   if (!text) return;
-  
+
   const bits = buildBits(text, isFast);
-  const tBit = isFast ? 0.045 : 0.100;
+  const tBit = isFast ? 0.045 : 0.100;       // 1ビットの長さ (秒)
   const now = ctx.currentTime + 0.1;
 
   const osc = ctx.createOscillator();
@@ -131,10 +141,10 @@ document.getElementById('btnPlay').onclick = () => {
   // パイロット音 (ソ: 300ms)
   osc.frequency.setValueAtTime(FREQ_ST, now);
   gain.gain.setValueAtTime(0, now);
-  gain.gain.linearRampToValueAtTime(0.2, now + 0.02);
+  gain.gain.linearRampToValueAtTime(0.2, now + 0.03);
 
-  // FSKデータ送信
-  let t = now + 0.300; 
+  // FSKデータ
+  let t = now + 0.3;
   bits.forEach((bit) => {
     osc.frequency.setValueAtTime(bit === 1 ? FREQ_1 : FREQ_0, t);
     t += tBit;
@@ -145,28 +155,29 @@ document.getElementById('btnPlay').onclick = () => {
 
   osc.start(now);
   osc.stop(t);
+
+  log(`送信: ${text} (${isFast ? '高速' : '正確'}モード, ${bits.length}ビット)`);
 };
 
-// 受信処理
+// ---------- 受信側 ----------
 document.getElementById('btnListen').onclick = async () => {
   const btn = document.getElementById('btnListen');
   const status = document.getElementById('status');
-  const isFastMode = document.getElementById('rxModeSelect').value === 'fast';
-
-  document.getElementById('log').textContent = `--- ログ開始 (${isFastMode ? "高速" : "正確"}モード) ---`;
-  document.getElementById('outputText').textContent = "---";
-  
+  const logEl = document.getElementById('log');
+  const output = document.getElementById('outputText');
+  logEl.textContent = "--- ログ開始 ---";
+  output.textContent = "---";
   btn.disabled = true;
-  status.textContent = "👂 スタート音(ソ)待機中...";
+  status.textContent = "🎤 マイク起動中...";
 
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
   });
-  
+
   const ctx = getCtx();
   const source = ctx.createMediaStreamSource(stream);
   const analyser = ctx.createAnalyser();
-  analyser.fftSize = 1024;
+  analyser.fftSize = 2048;
   source.connect(analyser);
 
   const binSize = ctx.sampleRate / analyser.fftSize;
@@ -175,132 +186,162 @@ document.getElementById('btnListen').onclick = async () => {
   const bST = Math.round(FREQ_ST / binSize);
 
   const data = new Uint8Array(analyser.frequencyBinCount);
-  
-  let isRecording = false;
-  let audioBuffer = [];
-  let silentCount = 0;
-  const intervalMs = 10;
-  
+
+  // 受信モード
+  const rxMode = document.getElementById('rxMode').value;
+  const isFast = rxMode === 'fast';
+  const tBitMs = isFast ? 45 : 100;          // 1ビットの長さ (ms)
+  const repeat = isFast ? 2 : 3;             // 繰り返し回数
+  const symbolMs = tBitMs * repeat;          // 1シンボル (ビット判定単位) の長さ
+  log(`受信モード: ${isFast ? '高速' : '正確'} (ビット長${tBitMs}ms × ${repeat}回)`);
+
+  // スタート音検出閾値
+  const ST_THRESHOLD = 55;
+  let listening = false;          // データ受信中か
+  let startDetected = false;      // スタート音を検出済みか
+  let stStartTime = 0;            // スタート音が立ち上がった時刻
+
+  let rawSamples = [];            // 現在のビット期間内のサンプル { val0, val1 }
+  let bitStream = [];             // 判定済みビット列 (繰り返しはまとめられていない生のビット)
+  let currentBitStart = 0;        // 現在のビット期間の開始時刻
+  let currentBitEnd = 0;          // 終了時刻
+  let bitIndex = 0;              // 現在のビット番号 (ビットストリーム内)
+  let totalBits = 0;             // 受信すべき総ビット数 (後で設定)
+  let headerDecoded = false;     // ヘッダーをデコード済みか
+
+  // 受信ループ (5ms間隔)
   const loop = setInterval(() => {
     analyser.getByteFrequencyData(data);
-    const valST = data[bST];
-    const val0  = data[b0];
-    const val1  = data[b1];
+    const now = Date.now();
 
-    if (!isRecording && valST > 60) {
-      isRecording = true;
-      status.textContent = "🎙️ 信号録音中...";
-      log("スタート音検出。録音開始...");
+    // ---- スタート音検出 ----
+    if (!startDetected) {
+      if (data[bST] > ST_THRESHOLD) {
+        if (!listening) {
+          stStartTime = now;
+          listening = true;
+          status.textContent = "📡 スタート音を検出！ データ受信開始...";
+          log("スタート音検出 (ソ)");
+          // スタート音は300ms続くので、データ開始は stStartTime + 300
+          const dataStart = stStartTime + 300;
+          currentBitStart = dataStart;
+          currentBitEnd = dataStart + tBitMs;
+          bitIndex = 0;
+          rawSamples = [];
+          bitStream = [];
+          headerDecoded = false;
+          startDetected = true;
+        }
+      }
+      return;
     }
 
-    if (isRecording) {
-      audioBuffer.push({ t: Date.now(), b0: val0, b1: val1, bST: valST });
+    // ---- データ受信フェーズ ----
+    if (!startDetected) return;
 
-      if (val0 < 30 && val1 < 30 && valST < 30) {
-        silentCount++;
-      } else {
-        silentCount = 0;
+    // 現在のビット期間内のサンプルを収集
+    if (now >= currentBitStart && now < currentBitEnd) {
+      rawSamples.push({ val0: data[b0], val1: data[b1] });
+    }
+
+    // ビット期間終了 → ビット判定
+    if (now >= currentBitEnd) {
+      // バッファが空でない場合のみ判定
+      if (rawSamples.length > 0) {
+        let sum0 = 0, sum1 = 0;
+        for (let s of rawSamples) {
+          sum0 += s.val0;
+          sum1 += s.val1;
+        }
+        // 平均値で判定 (1の方が強ければ1)
+        const bit = (sum1 / rawSamples.length) > (sum0 / rawSamples.length) ? 1 : 0;
+        bitStream.push(bit);
+        bitIndex++;
+        status.textContent = `📥 受信中... ${bitIndex} ビット`;
       }
 
-      // 無音が300ms続いたら解析開始
-      if (audioBuffer.length > 20 && silentCount > 30) {
+      // 次のビット期間へ
+      currentBitStart = currentBitEnd;
+      currentBitEnd = currentBitStart + tBitMs;
+      rawSamples = [];
+
+      // ---- ヘッダー判読 (最初の 14 * repeat ビットが揃ったら) ----
+      if (!headerDecoded && bitStream.length >= 14 * repeat) {
+        // 最初の 14*repeat ビットを切り出し、デコード
+        const headerRaw = bitStream.slice(0, 14 * repeat);
+        // 繰り返しをまとめてデコード
+        const headerByte = decodeBitsToByte(headerRaw, repeat);
+        const isFastFromHeader = ((headerByte >> 7) & 1) === 1;
+        const dataLen = headerByte & 0x7F;
+        // モードが一致しているかチェック (一応)
+        if (isFastFromHeader !== isFast) {
+          log(`⚠️ ヘッダーモード(${isFastFromHeader?'高速':'正確'})が受信設定(${isFast?'高速':'正確'})と異なります。継続します。`);
+        }
+        totalBits = (1 + dataLen) * 14 * repeat;  // ヘッダー1バイト + データ
+        headerDecoded = true;
+        log(`ヘッダー復号: データ長=${dataLen}バイト, 総ビット数=${totalBits}`);
+        status.textContent = `📥 受信中... (${bitIndex}/${totalBits} ビット)`;
+      }
+
+      // ---- 全ビット受信完了 ----
+      if (headerDecoded && bitStream.length >= totalBits) {
         clearInterval(loop);
         stream.getTracks().forEach(t => t.stop());
         btn.disabled = false;
-        status.textContent = "⚙️ 解析中...";
-        log(`録音完了 (${audioBuffer.length * intervalMs}ms)`);
-        
-        parseBuffer(audioBuffer, isFastMode);
+        status.textContent = "✅ 受信完了";
+        log(`受信完了 (${bitStream.length} ビット)`);
+        // デコード実行
+        decodeStream(bitStream, repeat);
+        return;
       }
     }
-  }, intervalMs);
+  }, 5); // 5ms 間隔でサンプリング
 };
 
-// 一括解析関数
-function parseBuffer(buffer, isFastMode) {
-  const tBitMs = isFastMode ? 45 : 100;
-  const repeatCount = isFastMode ? 1 : 3;
-
-  // データ開始位置（ソが消えてド/ミが始まった場所）を特定
-  let dataStartIndex = -1;
-  for (let i = 0; i < buffer.length - 3; i++) {
-    if (buffer[i].bST < 40 && (buffer[i].b0 > 40 || buffer[i].b1 > 40)) {
-      dataStartIndex = i;
-      break;
+// ---------- デコードユーティリティ ----------
+function decodeBitsToByte(rawBits, repeat) {
+  // rawBits は繰り返しを含むビット列 (長さ 14*repeat)
+  // repeat ごとに多数決を取って14ビットに縮約
+  let voted = [];
+  for (let i = 0; i < rawBits.length; i += repeat) {
+    let sum = 0;
+    for (let j = 0; j < repeat; j++) {
+      sum += (i + j < rawBits.length) ? rawBits[i + j] : 0;
     }
+    voted.push(sum >= repeat/2 ? 1 : 0);
   }
-
-  if (dataStartIndex === -1) {
-    log("エラー: 信号の開始位置が見つかりません");
-    document.getElementById('status').textContent = "❌ 解析失敗";
-    return;
-  }
-
-  const startTime = buffer[dataStartIndex].t;
-  log(`データ開始点を検出: +${dataStartIndex * 10}ms`);
-
-  // ビットサンプリング
-  let rawBits = [];
-  let sampleIndex = 0;
-  while (true) {
-    const sampleT = startTime + (sampleIndex + 0.5) * tBitMs;
-    const item = buffer.find(b => b.t >= sampleT);
-    if (!item) break;
-    
-    rawBits.push(item.b1 > item.b0 ? 1 : 0);
-    sampleIndex++;
-  }
-
-  log(`取得ビット数: ${rawBits.length} bit`);
-  decodeStream(rawBits, repeatCount);
-}
-
-function decodeBitsToByte(rawBits, repeatCount) {
-  let votedBits = [];
-  if (repeatCount === 3) {
-    for (let i = 0; i < rawBits.length; i += 3) {
-      const sum = (rawBits[i]||0) + (rawBits[i+1]||0) + (rawBits[i+2]||0);
-      votedBits.push(sum >= 2 ? 1 : 0);
-    }
-  } else {
-    votedBits = rawBits;
-  }
-  const highCode = votedBits.slice(0, 7).reduce((acc, b) => (acc << 1) | b, 0);
-  const lowCode  = votedBits.slice(7, 14).reduce((acc, b) => (acc << 1) | b, 0);
+  // voted は14ビット (ハミング符号化された2つの7ビット)
+  const highCode = voted.slice(0, 7).reduce((acc, b) => (acc << 1) | b, 0);
+  const lowCode  = voted.slice(7, 14).reduce((acc, b) => (acc << 1) | b, 0);
   return (decodeHamming(highCode) << 4) | decodeHamming(lowCode);
 }
 
-function decodeStream(raw, repeatCount) {
+function decodeStream(bitStream, repeat) {
   const output = document.getElementById('outputText');
-  const status = document.getElementById('status');
-  const bitsPerChar = 14 * repeatCount;
-  
-  if (raw.length < bitsPerChar) {
-    output.textContent = "データ不足";
-    status.textContent = "❌ 受信失敗";
-    return;
-  }
+  const bitsPerByte = 14 * repeat;   // 1バイトあたりのビット数
 
-  // 先頭14ビット（または14×3ビット）を文字数ヘッダとしてデコード
-  const lengthByte = decodeBitsToByte(raw.slice(0, bitsPerChar), repeatCount);
-  log(`ヘッダ解析結果: 文字数 = ${lengthByte}`);
+  // ヘッダー (最初の1バイト)
+  const headerRaw = bitStream.slice(0, bitsPerByte);
+  const headerByte = decodeBitsToByte(headerRaw, repeat);
+  const dataLen = headerByte & 0x7F;
+  log(`ヘッダー: データ長=${dataLen}`);
 
   let bytes = [];
-  for (let c = 0; c < lengthByte; c++) {
-    const offset = (1 + c) * bitsPerChar;
-    const charRaw = raw.slice(offset, offset + bitsPerChar);
-    if (charRaw.length < bitsPerChar) break;
-    bytes.push(decodeBitsToByte(charRaw, repeatCount));
+  for (let i = 0; i < dataLen; i++) {
+    const offset = (1 + i) * bitsPerByte;
+    const raw = bitStream.slice(offset, offset + bitsPerByte);
+    if (raw.length < bitsPerByte) break;
+    const b = decodeBitsToByte(raw, repeat);
+    bytes.push(b);
   }
 
   try {
     const text = new TextDecoder().decode(new Uint8Array(bytes));
-    log(`復元成功: "${text}"`);
-    output.textContent = text || "復元失敗";
-    status.textContent = "✅ 受信完了";
+    log(`✅ 復元成功: "${text}"`);
+    output.textContent = text || "(空文字列)";
   } catch(e) {
+    log(`❌ デコードエラー: ${e.message}`);
     output.textContent = "デコードエラー";
-    status.textContent = "❌ デコード失敗";
   }
 }
 </script>
