@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>音階音響通信 (高速モード同期改善・キャンセル付き)</title>
+  <title>音階音響通信 (高速モード安定版・2.5倍速)</title>
   <style>
     body { font-family: sans-serif; max-width: 640px; margin: 20px auto; padding: 15px; background: #f4f6f8; }
     .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
@@ -23,7 +23,7 @@
 </head>
 <body>
 
-  <h2>🎵 音階音響通信 (モード手動選択 + キャンセル機能)</h2>
+  <h2>🎵 音階音響通信 (高速モード安定版・2.5倍速)</h2>
 
   <div class="card">
     <h3>1. 送信設定</h3>
@@ -31,7 +31,7 @@
       <label>送信モード: </label>
       <select id="txMode">
         <option value="accurate">🛡️ 正確モード (100ms×3)</option>
-        <option value="fast">⚡ 高速モード (45ms×2)</option>
+        <option value="fast">⚡ 高速モード (60ms×2) 約2.5倍速</option>
       </select>
     </div>
     <textarea id="inputText" placeholder="送信する文字列">Hello</textarea>
@@ -46,7 +46,7 @@
       <label>受信モード: </label>
       <select id="rxMode">
         <option value="accurate">🛡️ 正確モード (100ms×3)</option>
-        <option value="fast">⚡ 高速モード (45ms×2)</option>
+        <option value="fast">⚡ 高速モード (60ms×2) 約2.5倍速</option>
       </select>
     </div>
     <div class="btn-group">
@@ -132,8 +132,9 @@ document.getElementById('btnPlay').onclick = () => {
   const isFast = document.getElementById('txMode').value === 'fast';
   if (!text) return;
 
+  // 高速モードは 60ms, 正確は 100ms
+  const tBit = isFast ? 0.060 : 0.100;
   const bits = buildBits(text, isFast);
-  const tBit = isFast ? 0.045 : 0.100;
   const now = ctx.currentTime + 0.1;
 
   const osc = ctx.createOscillator();
@@ -157,7 +158,7 @@ document.getElementById('btnPlay').onclick = () => {
 
   osc.start(now);
   osc.stop(t);
-  log(`送信: ${text} (${isFast ? '高速' : '正確'}モード, ${bits.length}ビット)`);
+  log(`送信: ${text} (${isFast ? '高速(60ms×2)' : '正確(100ms×3)'}モード, ${bits.length}ビット)`);
 };
 
 // ---------- 受信側 (キャンセル対応・パイロット立ち下がり検出) ----------
@@ -194,7 +195,6 @@ document.getElementById('btnListen').onclick = async () => {
   const logEl = document.getElementById('log');
   const output = document.getElementById('outputText');
   
-  // 既存受信があれば停止
   if (isReceiving) stopReceive(false);
   
   logEl.textContent = "--- ログ開始 ---";
@@ -229,12 +229,12 @@ document.getElementById('btnListen').onclick = async () => {
 
   const rxMode = document.getElementById('rxMode').value;
   const isFast = rxMode === 'fast';
-  const tBitMs = isFast ? 45 : 100;
+  const tBitMs = isFast ? 60 : 100;      // 変更点: 高速60ms
   const repeat = isFast ? 2 : 3;
-  log(`受信モード: ${isFast ? '高速' : '正確'} (ビット長${tBitMs}ms × ${repeat}回)`);
+  log(`受信モード: ${isFast ? '高速(60ms×2)' : '正確(100ms×3)'}`);
 
   const ST_THRESHOLD = 55;
-  let state = 'idle'; // idle -> pilot_on -> pilot_off -> receiving
+  let state = 'idle'; 
   let pilotStartTime = 0;
   let pilotEndTime = 0;
   let dataStartTime = 0;
@@ -249,7 +249,6 @@ document.getElementById('btnListen').onclick = async () => {
   let headerDataLen = 0;
   let receiveCompleted = false;
 
-  // リセット関数（受信中は状態だけリセット）
   function resetReceiveState() {
     state = 'idle';
     pilotStartTime = 0;
@@ -270,13 +269,8 @@ document.getElementById('btnListen').onclick = async () => {
     analyser.getByteFrequencyData(data);
     const now = Date.now();
 
-    // ---- キャンセルチェック ----
-    if (!isReceiving) {
-      // isReceivingはstopReceiveでfalseになるが、ループ内で参照
-      return;
-    }
+    if (!isReceiving) return;
 
-    // ---- 状態遷移 ----
     const stPower = data[bST];
     const isPilotOn = stPower > ST_THRESHOLD;
 
@@ -292,11 +286,10 @@ document.getElementById('btnListen').onclick = async () => {
 
     if (state === 'pilot_on') {
       if (!isPilotOn) {
-        // パイロット音の立ち下がりを検出 → ここからデータが始まる！
         pilotEndTime = now;
         state = 'pilot_off';
-        // データ開始はパイロット終了直後（+ 数msのガードを入れても良いが、ぴったり合わせる）
-        dataStartTime = pilotEndTime + 5; // 5msの微小マージン（減衰の影響を吸収）
+        // パイロット終了から 10ms 後にデータ開始（マージン確保）
+        dataStartTime = pilotEndTime + 10;
         currentBitStart = dataStartTime;
         currentBitEnd = dataStartTime + tBitMs;
         bitIndex = 0;
@@ -304,10 +297,9 @@ document.getElementById('btnListen').onclick = async () => {
         bitStream = [];
         headerDecoded = false;
         status.textContent = '⚡ パイロット終了 → データ受信開始';
-        log(`パイロット OFF 検出 (${pilotEndTime - pilotStartTime}ms) データ開始`);
+        log(`パイロット OFF 検出 (${pilotEndTime - pilotStartTime}ms) データ開始+10ms`);
         return;
       }
-      // パイロットが長すぎる場合の安全策（500ms超でタイムアウト）
       if (now - pilotStartTime > 500) {
         log('⚠️ パイロット音が長すぎるためリセット');
         resetReceiveState();
@@ -316,16 +308,14 @@ document.getElementById('btnListen').onclick = async () => {
       return;
     }
 
-    // ---- データ受信フェーズ (state === 'pilot_off' または 'receiving') ----
+    // ---- データ受信フェーズ ----
     if (state === 'pilot_off' || state === 'receiving') {
       if (state === 'pilot_off') state = 'receiving';
       
-      // 現在のビット期間内のサンプルを収集
       if (now >= currentBitStart && now < currentBitEnd) {
         rawSamples.push({ val0: data[b0], val1: data[b1] });
       }
 
-      // ビット期間終了 → ビット判定
       if (now >= currentBitEnd) {
         if (rawSamples.length > 0) {
           let sum0 = 0, sum1 = 0;
@@ -350,7 +340,6 @@ document.getElementById('btnListen').onclick = async () => {
           const isFastFromHeader = ((headerByte >> 7) & 1) === 1;
           const dataLen = headerByte & 0x7F;
           
-          // データ長が異常に大きい場合はエラーとしてリセット
           if (dataLen > 200) {
             log(`❌ 異常なデータ長(${dataLen})を検出。受信をリセットします。`);
             resetReceiveState();
@@ -358,6 +347,7 @@ document.getElementById('btnListen').onclick = async () => {
             return;
           }
           
+          // モード不一致はログに残すだけ（ステータスには出さない）
           if (isFastFromHeader !== isFast) {
             log(`⚠️ ヘッダーモード(${isFastFromHeader?'高速':'正確'})が受信設定(${isFast?'高速':'正確'})と異なりますが継続します。`);
           }
@@ -372,7 +362,6 @@ document.getElementById('btnListen').onclick = async () => {
         if (headerDecoded && bitStream.length >= totalBits && !receiveCompleted) {
           receiveCompleted = true;
           log(`受信完了 (${bitStream.length} ビット)`);
-          // ループを止めてデコード
           clearInterval(receiveLoopId);
           receiveLoopId = null;
           mediaStream.getTracks().forEach(t => t.stop());
@@ -383,13 +372,14 @@ document.getElementById('btnListen').onclick = async () => {
           status.textContent = '✅ 受信完了';
           status.style.color = '#28a745';
           
-          // デコード実行
-          decodeStream(bitStream, repeat);
+          // totalBits 分だけを切り出してデコード（余分は捨てる）
+          const validBits = bitStream.slice(0, totalBits);
+          decodeStream(validBits, repeat);
           return;
         }
       }
     }
-  }, 5);
+  }, 3); // サンプリング間隔 3ms（より細かく）
 
   isReceiving = true;
 };
@@ -404,7 +394,6 @@ function decodeBitsToByte(rawBits, repeat) {
     }
     voted.push(sum >= repeat/2 ? 1 : 0);
   }
-  // voted は14ビット
   if (voted.length < 14) return 0;
   const highCode = voted.slice(0, 7).reduce((acc, b) => (acc << 1) | b, 0);
   const lowCode  = voted.slice(7, 14).reduce((acc, b) => (acc << 1) | b, 0);
@@ -414,6 +403,12 @@ function decodeBitsToByte(rawBits, repeat) {
 function decodeStream(bitStream, repeat) {
   const output = document.getElementById('outputText');
   const bitsPerByte = 14 * repeat;
+
+  if (bitStream.length < bitsPerByte) {
+    log('❌ ビットストリームが短すぎます');
+    output.textContent = 'データ不足';
+    return;
+  }
 
   const headerRaw = bitStream.slice(0, bitsPerByte);
   const headerByte = decodeBitsToByte(headerRaw, repeat);
@@ -439,7 +434,6 @@ function decodeStream(bitStream, repeat) {
   }
 }
 
-// ページアンロード時に受信停止
 window.addEventListener('beforeunload', () => {
   if (isReceiving) stopReceive(false);
 });
