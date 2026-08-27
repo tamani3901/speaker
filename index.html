@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>音階音響通信 (マルチバイト対応・Turboモード追加)</title>
+  <title>音階音響通信 (マルチバイト対応・3モード)</title>
   <style>
     body { font-family: sans-serif; max-width: 640px; margin: 20px auto; padding: 15px; background: #f4f6f8; }
     .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
@@ -23,16 +23,16 @@
 </head>
 <body>
 
-  <h2>🎵 音階音響通信 (マルチバイト完全対応 + 3モード)</h2>
+  <h2>🎵 音階音響通信 (マルチバイト完全対応・3モード)</h2>
 
   <div class="card">
     <h3>1. 送信設定</h3>
     <div class="mode-group">
       <label>送信モード: </label>
       <select id="txMode">
-        <option value="accurate">🛡️ 正確モード (100ms×3)</option>
-        <option value="fast">⚡ 高速モード (60ms×2) 約2.5倍速</option>
-        <option value="turbo">🚀 正確高速モード (33ms×3) 約3倍速</option>
+        <option value="accurate">🛡️ 正確モード (100ms×3) 最も確実</option>
+        <option value="fast">⚡ 高速モード (60ms×2) 最速</option>
+        <option value="turbo">🚀 正確高速モード (60ms×3) おすすめ</option>
       </select>
     </div>
     <textarea id="inputText" placeholder="日本語・漢字・ひらがなも送信できます">こんにちは世界</textarea>
@@ -46,9 +46,9 @@
     <div class="mode-group">
       <label>受信モード: </label>
       <select id="rxMode">
-        <option value="accurate">🛡️ 正確モード (100ms×3)</option>
-        <option value="fast">⚡ 高速モード (60ms×2) 約2.5倍速</option>
-        <option value="turbo">🚀 正確高速モード (33ms×3) 約3倍速</option>
+        <option value="accurate">🛡️ 正確モード (100ms×3) 最も確実</option>
+        <option value="fast">⚡ 高速モード (60ms×2) 最速</option>
+        <option value="turbo">🚀 正確高速モード (60ms×3) おすすめ</option>
       </select>
     </div>
     <div class="btn-group">
@@ -112,7 +112,7 @@ function buildBits(text, mode) {
   const bytes = new TextEncoder().encode(text);
   let rawBits = [];
 
-  // ヘッダー: [モードフラグ(0/1)][データ長(7bit)]  ※モードフラグは正確or高速判定用だが、ここでは目安として設定
+  // ヘッダー: [モードフラグ(0/1)][データ長(7bit)]  ※モードフラグは正確or高速判定用
   const isFast = (mode === 'fast' || mode === 'turbo');
   const header = (isFast ? 1 : 0) << 7 | (bytes.length & 0x7F);
   rawBits.push(...encodeByteTo14Bits(header));
@@ -121,10 +121,10 @@ function buildBits(text, mode) {
     rawBits.push(...encodeByteTo14Bits(b));
   }
 
-  let repeat = 3;
-  if (mode === 'fast') repeat = 2;
-  else if (mode === 'turbo') repeat = 3;
-  else if (mode === 'accurate') repeat = 3;
+  let repeat;
+  if (mode === 'accurate') repeat = 3;
+  else if (mode === 'fast') repeat = 2;
+  else if (mode === 'turbo') repeat = 3; // 正確高速は3回
 
   let repeated = [];
   for (let bit of rawBits) {
@@ -142,7 +142,7 @@ document.getElementById('btnPlay').onclick = () => {
   let tBit, repeat;
   if (mode === 'accurate') { tBit = 0.100; repeat = 3; }
   else if (mode === 'fast') { tBit = 0.060; repeat = 2; }
-  else if (mode === 'turbo') { tBit = 0.033; repeat = 3; }
+  else if (mode === 'turbo') { tBit = 0.060; repeat = 3; }
 
   const bits = buildBits(text, mode);
   const now = ctx.currentTime + 0.1;
@@ -169,7 +169,7 @@ document.getElementById('btnPlay').onclick = () => {
   osc.start(now);
   osc.stop(t);
   
-  const modeName = { accurate: '正確(100ms×3)', fast: '高速(60ms×2)', turbo: '正確高速(33ms×3)' }[mode];
+  const modeName = { accurate: '正確(100ms×3)', fast: '高速(60ms×2)', turbo: '正確高速(60ms×3)' }[mode];
   log(`送信: "${text}" (${modeName}, ${bits.length}ビット)`);
 };
 
@@ -243,9 +243,9 @@ document.getElementById('btnListen').onclick = async () => {
   let tBitMs, repeat;
   if (rxMode === 'accurate') { tBitMs = 100; repeat = 3; }
   else if (rxMode === 'fast') { tBitMs = 60; repeat = 2; }
-  else if (rxMode === 'turbo') { tBitMs = 33; repeat = 3; }
+  else if (rxMode === 'turbo') { tBitMs = 60; repeat = 3; }
 
-  const modeName = { accurate: '正確(100ms×3)', fast: '高速(60ms×2)', turbo: '正確高速(33ms×3)' }[rxMode];
+  const modeName = { accurate: '正確(100ms×3)', fast: '高速(60ms×2)', turbo: '正確高速(60ms×3)' }[rxMode];
   log(`受信モード: ${modeName}`);
 
   const ST_THRESHOLD = 55;
@@ -301,8 +301,8 @@ document.getElementById('btnListen').onclick = async () => {
       if (!isPilotOn) {
         pilotEndTime = now;
         state = 'pilot_off';
-        // ★ パイロット立ち下がり後、ビット長の25%をマージンとして待ってから最初のビットをサンプリング開始 (過渡応答を避ける)
-        const margin = tBitMs * 0.25;
+        // ★ パイロット立ち下がり後、ビット長の20%をマージンとして待ってから最初のビットをサンプリング開始 (過渡応答を避ける)
+        const margin = tBitMs * 0.20;
         const dataStartTime = pilotEndTime + margin;
         currentBitStart = dataStartTime;
         currentBitEnd = dataStartTime + tBitMs;
@@ -393,7 +393,7 @@ document.getElementById('btnListen').onclick = async () => {
         }
       }
     }
-  }, 3); // サンプリング間隔 3ms
+  }, 2); // ★ サンプリング間隔を2msに短縮 (より精密なタイミング取得)
 
   isReceiving = true;
 };
@@ -438,12 +438,11 @@ function decodeStream(bitStream, repeat) {
     bytes.push(b);
   }
 
-  // ★ デバッグ: 受信バイト列を16進数で表示 (マルチバイト判定の助け)
+  // デバッグ: 受信バイト列を16進数で表示
   const hexStr = bytes.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
   log(`受信バイト列 (Hex): ${hexStr}`);
 
   try {
-    // fatal: false を指定して、不正なバイト列でも置換文字でデコード
     const decoder = new TextDecoder('utf-8', { fatal: false });
     const text = decoder.decode(new Uint8Array(bytes));
     if (text.includes('\uFFFD')) {
