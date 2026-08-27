@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>音階音響通信 (マルチバイト対応・3モード)</title>
+  <title>音階音響通信 (ヘッダー強固モード付き)</title>
   <style>
     body { font-family: sans-serif; max-width: 640px; margin: 20px auto; padding: 15px; background: #f4f6f8; }
     .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
@@ -12,18 +12,20 @@
     .btn-send { background: #28a745; }
     .btn-listen { background: #007bff; }
     .btn-cancel { background: #dc3545; }
-    select { padding: 10px; font-size: 15px; border-radius: 6px; margin-bottom: 10px; margin-right: 10px; }
+    select, input[type="checkbox"] { padding: 10px; font-size: 15px; border-radius: 6px; margin-bottom: 10px; margin-right: 10px; }
     .status { margin-top: 10px; font-size: 14px; font-weight: bold; color: #d9534f; }
     .result { font-size: 26px; font-weight: bold; color: #007bff; padding: 12px; background: #e8f4ff; border-radius: 6px; min-height: 36px; word-break: break-all; margin-top: 10px; text-align: center; }
     .log { font-family: monospace; font-size: 11px; color: #333; background: #eee; padding: 8px; border-radius: 4px; margin-top: 10px; height: 180px; overflow-y: auto; white-space: pre-wrap; }
     .mode-group { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
     .mode-group label { font-weight: bold; }
     .btn-group { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .option-group { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+    .option-group label { display: flex; align-items: center; gap: 5px; font-weight: normal; }
   </style>
 </head>
 <body>
 
-  <h2>🎵 音階音響通信 (マルチバイト完全対応・3モード)</h2>
+  <h2>🎵 音階音響通信 (ヘッダー強固モード)</h2>
 
   <div class="card">
     <h3>1. 送信設定</h3>
@@ -34,6 +36,9 @@
         <option value="fast">⚡ 高速モード (60ms×2) 最速</option>
         <option value="turbo">🚀 正確高速モード (60ms×3) おすすめ</option>
       </select>
+    </div>
+    <div class="option-group">
+      <label><input type="checkbox" id="txHeaderBoost"> ヘッダーを強固にする (4回繰り返し)</label>
     </div>
     <textarea id="inputText" placeholder="日本語・漢字・ひらがなも送信できます">こんにちは世界</textarea>
     <div>
@@ -50,6 +55,9 @@
         <option value="fast">⚡ 高速モード (60ms×2) 最速</option>
         <option value="turbo">🚀 正確高速モード (60ms×3) おすすめ</option>
       </select>
+    </div>
+    <div class="option-group">
+      <label><input type="checkbox" id="rxHeaderBoost"> ヘッダーを強固にする (4回繰り返し)</label>
     </div>
     <div class="btn-group">
       <button class="btn-listen" id="btnListen">🎤 マイクで受信開始</button>
@@ -108,43 +116,53 @@ function encodeByteTo14Bits(byteVal) {
 }
 
 // ---------- 送信側 ----------
-function buildBits(text, mode) {
+function buildBits(text, mode, headerBoost) {
   const bytes = new TextEncoder().encode(text);
   let rawBits = [];
 
-  // ヘッダー: [モードフラグ(0/1)][データ長(7bit)]  ※モードフラグは正確or高速判定用
+  // ヘッダー: [モードフラグ(0/1)][データ長(7bit)]
   const isFast = (mode === 'fast' || mode === 'turbo');
   const header = (isFast ? 1 : 0) << 7 | (bytes.length & 0x7F);
-  rawBits.push(...encodeByteTo14Bits(header));
+  const headerBits = encodeByteTo14Bits(header);
 
+  // データ部分の繰り返し回数
+  let dataRepeat;
+  if (mode === 'accurate') dataRepeat = 3;
+  else if (mode === 'fast') dataRepeat = 2;
+  else if (mode === 'turbo') dataRepeat = 3;
+
+  // ヘッダー繰り返し回数 (強固モードなら4、そうでなければデータと同じ)
+  const headerRepeat = headerBoost ? 4 : dataRepeat;
+
+  // ヘッダーを繰り返し追加
+  for (let bit of headerBits) {
+    for (let i = 0; i < headerRepeat; i++) rawBits.push(bit);
+  }
+
+  // データ部分を繰り返し追加
   for (let b of bytes) {
-    rawBits.push(...encodeByteTo14Bits(b));
+    const dataBits = encodeByteTo14Bits(b);
+    for (let bit of dataBits) {
+      for (let i = 0; i < dataRepeat; i++) rawBits.push(bit);
+    }
   }
 
-  let repeat;
-  if (mode === 'accurate') repeat = 3;
-  else if (mode === 'fast') repeat = 2;
-  else if (mode === 'turbo') repeat = 3; // 正確高速は3回
-
-  let repeated = [];
-  for (let bit of rawBits) {
-    for (let i = 0; i < repeat; i++) repeated.push(bit);
-  }
-  return repeated;
+  return rawBits;
 }
 
 document.getElementById('btnPlay').onclick = () => {
   const ctx = getCtx();
   const text = document.getElementById('inputText').value;
   const mode = document.getElementById('txMode').value;
+  const headerBoost = document.getElementById('txHeaderBoost').checked;
   if (!text) return;
 
-  let tBit, repeat;
-  if (mode === 'accurate') { tBit = 0.100; repeat = 3; }
-  else if (mode === 'fast') { tBit = 0.060; repeat = 2; }
-  else if (mode === 'turbo') { tBit = 0.060; repeat = 3; }
+  let tBit;
+  if (mode === 'accurate') tBit = 0.100;
+  else if (mode === 'fast') tBit = 0.060;
+  else if (mode === 'turbo') tBit = 0.060;
 
-  const bits = buildBits(text, mode);
+  const bits = buildBits(text, mode, headerBoost);
   const now = ctx.currentTime + 0.1;
 
   const osc = ctx.createOscillator();
@@ -169,8 +187,9 @@ document.getElementById('btnPlay').onclick = () => {
   osc.start(now);
   osc.stop(t);
   
-  const modeName = { accurate: '正確(100ms×3)', fast: '高速(60ms×2)', turbo: '正確高速(60ms×3)' }[mode];
-  log(`送信: "${text}" (${modeName}, ${bits.length}ビット)`);
+  const modeName = { accurate: '正確', fast: '高速', turbo: '正確高速' }[mode];
+  const boostStr = headerBoost ? ' (ヘッダー強固)' : '';
+  log(`送信: "${text}" (${modeName}${boostStr}, ${bits.length}ビット)`);
 };
 
 // ---------- 受信側 ----------
@@ -240,13 +259,19 @@ document.getElementById('btnListen').onclick = async () => {
   const data = new Uint8Array(analyser.frequencyBinCount);
 
   const rxMode = document.getElementById('rxMode').value;
-  let tBitMs, repeat;
-  if (rxMode === 'accurate') { tBitMs = 100; repeat = 3; }
-  else if (rxMode === 'fast') { tBitMs = 60; repeat = 2; }
-  else if (rxMode === 'turbo') { tBitMs = 60; repeat = 3; }
+  const headerBoost = document.getElementById('rxHeaderBoost').checked;
 
-  const modeName = { accurate: '正確(100ms×3)', fast: '高速(60ms×2)', turbo: '正確高速(60ms×3)' }[rxMode];
-  log(`受信モード: ${modeName}`);
+  let tBitMs, dataRepeat;
+  if (rxMode === 'accurate') { tBitMs = 100; dataRepeat = 3; }
+  else if (rxMode === 'fast') { tBitMs = 60; dataRepeat = 2; }
+  else if (rxMode === 'turbo') { tBitMs = 60; dataRepeat = 3; }
+
+  // ヘッダー用の繰り返し回数 (強固モードなら4、そうでなければデータと同じ)
+  const headerRepeat = headerBoost ? 4 : dataRepeat;
+
+  const modeName = { accurate: '正確', fast: '高速', turbo: '正確高速' }[rxMode];
+  const boostStr = headerBoost ? ' (ヘッダー強固)' : '';
+  log(`受信モード: ${modeName}${boostStr}`);
 
   const ST_THRESHOLD = 55;
   let state = 'idle'; 
@@ -301,7 +326,6 @@ document.getElementById('btnListen').onclick = async () => {
       if (!isPilotOn) {
         pilotEndTime = now;
         state = 'pilot_off';
-        // ★ パイロット立ち下がり後、ビット長の20%をマージンとして待ってから最初のビットをサンプリング開始 (過渡応答を避ける)
         const margin = tBitMs * 0.20;
         const dataStartTime = pilotEndTime + margin;
         currentBitStart = dataStartTime;
@@ -347,10 +371,10 @@ document.getElementById('btnListen').onclick = async () => {
         currentBitEnd = currentBitStart + tBitMs;
         rawSamples = [];
 
-        // ---- ヘッダー判読 ----
-        if (!headerDecoded && bitStream.length >= 14 * repeat) {
-          const headerRaw = bitStream.slice(0, 14 * repeat);
-          const headerByte = decodeBitsToByte(headerRaw, repeat);
+        // ---- ヘッダー判読 (ヘッダー用の繰り返し回数を使用) ----
+        if (!headerDecoded && bitStream.length >= 14 * headerRepeat) {
+          const headerRaw = bitStream.slice(0, 14 * headerRepeat);
+          const headerByte = decodeBitsToByte(headerRaw, headerRepeat);
           const isFastFromHeader = ((headerByte >> 7) & 1) === 1;
           const dataLen = headerByte & 0x7F;
           
@@ -361,12 +385,12 @@ document.getElementById('btnListen').onclick = async () => {
             return;
           }
           
-          // モード不一致はログに残すだけ（ステータスには出さない）
           const isFast = (rxMode === 'fast' || rxMode === 'turbo');
           if (isFastFromHeader !== isFast) {
             log(`⚠️ ヘッダーモード(${isFastFromHeader?'高速':'正確'})が受信設定(${isFast?'高速':'正確'})と異なりますが継続します。`);
           }
-          totalBits = (1 + dataLen) * 14 * repeat;
+          // 総ビット数 = ヘッダー(ヘッダー用繰り返し) + データ(データ用繰り返し)
+          totalBits = (14 * headerRepeat) + (dataLen * 14 * dataRepeat);
           headerDecoded = true;
           headerDataLen = dataLen;
           log(`ヘッダー復号: データ長=${dataLen}バイト, 総ビット数=${totalBits}`);
@@ -388,17 +412,18 @@ document.getElementById('btnListen').onclick = async () => {
           status.style.color = '#28a745';
           
           const validBits = bitStream.slice(0, totalBits);
-          decodeStream(validBits, repeat);
+          // ヘッダー部分とデータ部分で繰り返し回数が異なるので、デコード関数に渡す
+          decodeStreamWithHeader(validBits, headerRepeat, dataRepeat);
           return;
         }
       }
     }
-  }, 2); // ★ サンプリング間隔を2msに短縮 (より精密なタイミング取得)
+  }, 2);
 
   isReceiving = true;
 };
 
-// ---------- デコードユーティリティ ----------
+// ---------- デコードユーティリティ (ヘッダーとデータで繰り返しが異なる場合に対応) ----------
 function decodeBitsToByte(rawBits, repeat) {
   let voted = [];
   for (let i = 0; i < rawBits.length; i += repeat) {
@@ -414,31 +439,32 @@ function decodeBitsToByte(rawBits, repeat) {
   return (decodeHamming(highCode) << 4) | decodeHamming(lowCode);
 }
 
-function decodeStream(bitStream, repeat) {
+function decodeStreamWithHeader(bitStream, headerRepeat, dataRepeat) {
   const output = document.getElementById('outputText');
-  const bitsPerByte = 14 * repeat;
+  const headerBitsLen = 14 * headerRepeat;
+  const dataBitsPerByte = 14 * dataRepeat;
 
-  if (bitStream.length < bitsPerByte) {
+  if (bitStream.length < headerBitsLen) {
     log('❌ ビットストリームが短すぎます');
     output.textContent = 'データ不足';
     return;
   }
 
-  const headerRaw = bitStream.slice(0, bitsPerByte);
-  const headerByte = decodeBitsToByte(headerRaw, repeat);
+  // ヘッダー復号
+  const headerRaw = bitStream.slice(0, headerBitsLen);
+  const headerByte = decodeBitsToByte(headerRaw, headerRepeat);
   const dataLen = headerByte & 0x7F;
   log(`デコード: データ長=${dataLen}`);
 
   let bytes = [];
   for (let i = 0; i < dataLen; i++) {
-    const offset = (1 + i) * bitsPerByte;
-    if (offset + bitsPerByte > bitStream.length) break;
-    const raw = bitStream.slice(offset, offset + bitsPerByte);
-    const b = decodeBitsToByte(raw, repeat);
+    const offset = headerBitsLen + i * dataBitsPerByte;
+    if (offset + dataBitsPerByte > bitStream.length) break;
+    const raw = bitStream.slice(offset, offset + dataBitsPerByte);
+    const b = decodeBitsToByte(raw, dataRepeat);
     bytes.push(b);
   }
 
-  // デバッグ: 受信バイト列を16進数で表示
   const hexStr = bytes.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
   log(`受信バイト列 (Hex): ${hexStr}`);
 
