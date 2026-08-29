@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Turbo Multi-Carrier Modem + Pre-rendered Image TX</title>
+  <title>Turbo Multi-Carrier Modem (Sync Fix)</title>
   <style>
     :root {
       --bg: #080c14;
@@ -22,64 +22,21 @@
     body { background: var(--bg); color: var(--text); padding: 16px; display: flex; justify-content: center; }
     .app { width: 100%; max-width: 1100px; display: flex; flex-direction: column; gap: 16px; }
 
-    header {
-      text-align: center;
-      border-bottom: 2px solid var(--border);
-      padding-bottom: 12px;
-    }
-    header h1 {
-      font-size: 1.6rem;
-      color: var(--cyan);
-      letter-spacing: 2px;
-      text-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
-    }
+    header { text-align: center; border-bottom: 2px solid var(--border); padding-bottom: 12px; }
+    header h1 { font-size: 1.6rem; color: var(--cyan); letter-spacing: 2px; text-shadow: 0 0 12px rgba(0, 240, 255, 0.4); }
     header p { color: var(--muted); font-size: 0.82rem; margin-top: 4px; }
 
     .grid { display: grid; grid-template-columns: 1fr 1.15fr; gap: 16px; }
     @media (max-width: 850px) { .grid { grid-template-columns: 1fr; } }
 
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 14px;
-      box-shadow: 0 6px 24px rgba(0,0,0,0.6);
-    }
-    .card-title {
-      font-size: 1rem;
-      font-weight: bold;
-      margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      border-left: 4px solid var(--cyan);
-      padding-left: 8px;
-    }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px; box-shadow: 0 6px 24px rgba(0,0,0,0.6); }
+    .card-title { font-size: 1rem; font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; border-left: 4px solid var(--cyan); padding-left: 8px; }
     .card-title.rx { border-left-color: var(--green); }
 
-    textarea {
-      width: 100%;
-      background: #050811;
-      border: 1px solid #23324d;
-      color: var(--cyan);
-      padding: 10px;
-      border-radius: 4px;
-      font-size: 0.95rem;
-      resize: vertical;
-    }
+    textarea { width: 100%; background: #050811; border: 1px solid #23324d; color: var(--cyan); padding: 10px; border-radius: 4px; font-size: 0.95rem; resize: vertical; }
     textarea:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 8px rgba(0,240,255,0.3); }
 
-    .btn {
-      background: #1e293b;
-      color: var(--text);
-      border: 1px solid #334155;
-      padding: 8px 14px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: bold;
-      font-size: 0.85rem;
-      transition: all 0.2s;
-    }
+    .btn { background: #1e293b; color: var(--text); border: 1px solid #334155; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem; transition: all 0.2s; }
     .btn:hover { background: #334155; }
     .btn-cyan { background: #006680; border-color: var(--cyan); color: #fff; }
     .btn-cyan:hover { background: #0088aa; box-shadow: 0 0 10px rgba(0,240,255,0.4); }
@@ -90,114 +47,31 @@
     .btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
     .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
-    select, input[type="file"] {
-      background: #050811;
-      color: #fff;
-      border: 1px solid #23324d;
-      padding: 6px 10px;
-      border-radius: 4px;
-      font-size: 0.85rem;
-    }
+    select, input[type="file"] { background: #050811; color: #fff; border: 1px solid #23324d; padding: 6px 10px; border-radius: 4px; font-size: 0.85rem; }
 
-    .spec-wrap {
-      position: relative;
-      background: #03050a;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      overflow: hidden;
-      margin-top: 8px;
-    }
+    .spec-wrap { position: relative; background: #03050a; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-top: 8px; }
     canvas { display: block; width: 100%; height: 180px; }
 
-    .vu-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 4px;
-      margin-top: 8px;
-      background: #050811;
-      padding: 6px;
-      border-radius: 4px;
-      border: 1px solid var(--border);
-    }
-    .vu-ch {
-      text-align: center;
-      font-size: 0.7rem;
-      color: var(--muted);
-      border: 1px solid #1a2333;
-      padding: 4px 2px;
-      border-radius: 3px;
-    }
+    .vu-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 8px; background: #050811; padding: 6px; border-radius: 4px; border: 1px solid var(--border); }
+    .vu-ch { text-align: center; font-size: 0.7rem; color: var(--muted); border: 1px solid #1a2333; padding: 4px 2px; border-radius: 3px; }
     .vu-val { font-weight: bold; font-size: 0.8rem; margin-top: 2px; }
 
-    .squelch-box {
-      margin-top: 8px;
-      background: #070b14;
-      padding: 8px 12px;
-      border-radius: 4px;
-      border: 1px solid var(--border);
-    }
-    .squelch-hdr {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.8rem;
-      margin-bottom: 4px;
-    }
+    .squelch-box { margin-top: 8px; background: #070b14; padding: 8px 12px; border-radius: 4px; border: 1px solid var(--border); }
+    .squelch-hdr { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px; }
     input[type="range"] { width: 100%; accent-color: var(--yellow); cursor: pointer; }
 
-    .led {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #333;
-      display: inline-block;
-    }
+    .led { width: 10px; height: 10px; border-radius: 50%; background: #333; display: inline-block; }
     .led.open { background: var(--green); box-shadow: 0 0 8px var(--green); }
     .led.closed { background: var(--red); }
 
-    .out-box {
-      background: #04060c;
-      border: 1px solid #1a2333;
-      padding: 8px;
-      min-height: 50px;
-      max-height: 90px;
-      overflow-y: auto;
-      border-radius: 4px;
-      word-break: break-all;
-      font-size: 0.9rem;
-      margin-top: 6px;
-    }
+    .out-box { background: #04060c; border: 1px solid #1a2333; padding: 8px; min-height: 50px; max-height: 90px; overflow-y: auto; border-radius: 4px; word-break: break-all; font-size: 0.9rem; margin-top: 6px; }
     .out-text { color: var(--green); }
     .out-hex { color: var(--muted); font-size: 0.75rem; }
 
-    .img-preview {
-      max-width: 100%;
-      max-height: 180px;
-      margin-top: 8px;
-      border-radius: 4px;
-      border: 1px solid var(--border);
-      display: none;
-    }
-
-    .stats-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.75rem;
-      background: #131d2e;
-      padding: 3px 8px;
-      border-radius: 3px;
-      color: var(--cyan);
-    }
-
-    .tab-btn {
-      padding: 4px 10px;
-      font-size: 0.75rem;
-      background: #162032;
-      border: 1px solid var(--border);
-      color: var(--text);
-      cursor: pointer;
-      border-radius: 4px 4px 0 0;
-    }
+    .img-preview { max-width: 100%; max-height: 180px; margin-top: 8px; border-radius: 4px; border: 1px solid var(--border); display: none; }
+    .stats-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; background: #131d2e; padding: 3px 8px; border-radius: 3px; color: var(--cyan); }
+    
+    .tab-btn { padding: 4px 10px; font-size: 0.75rem; background: #162032; border: 1px solid var(--border); color: var(--text); cursor: pointer; border-radius: 4px 4px 0 0; }
     .tab-btn.active { background: var(--cyan); color: #000; font-weight: bold; }
   </style>
 </head>
@@ -206,7 +80,7 @@
 <div class="app">
   <header>
     <h1>TURBO MULTI-CARRIER MODEM</h1>
-    <p>5波同時合成（パラレル4-FSK＋同期クロック）＋画像事前レンダリング送信 (Max 3MB)</p>
+    <p>5波同時合成（パラレル4-FSK＋同期クロック）＋同期補正バッファ</p>
   </header>
 
   <div class="grid">
@@ -221,7 +95,7 @@
 
       <div id="textModeGroup">
         <label style="font-size:0.75rem; color:var(--muted);">送信テキスト:</label>
-        <textarea id="txInput" rows="4">テスト送信です。先頭欠けとレンダリング負荷を完全修正しました。</textarea>
+        <textarea id="txInput" rows="4">コンピュータ</textarea>
       </div>
 
       <div id="imgModeGroup" style="display:none;">
@@ -245,13 +119,6 @@
         <button id="sendBtn" class="btn btn-cyan">▶ 事前合成 & 送信開始</button>
         <button id="stopBtn" class="btn btn-red" disabled>■ 中断</button>
         <span id="txStats" class="stats-badge" style="display:none;">READY</span>
-      </div>
-
-      <div style="margin-top:14px; border-top:1px dashed var(--border); padding-top:10px;">
-        <div style="font-size:0.75rem; color:var(--muted); margin-bottom:4px;">改修ポイント:</div>
-        <p style="font-size:0.72rem; color:var(--muted); line-height:1.4;">
-          送信ボタンを押すと、一旦バックグラウンド（OfflineAudioContext）で全音波をバッファ化してから再生します。これにより大容量データでもぷつぷつ切れなくなります。
-        </p>
       </div>
     </div>
 
@@ -315,7 +182,6 @@ function getCtx() {
   return audioCtx;
 }
 
-// モード切替
 let sendMode = 'text';
 const tabText = document.getElementById('tabText');
 const tabImg = document.getElementById('tabImg');
@@ -338,7 +204,6 @@ tabImg.onclick = () => {
   imgModeGroup.style.display = 'block';
 };
 
-// 画像選択
 let preparedImgDataUrl = null;
 document.getElementById('imgInput').addEventListener('change', (e) => {
   const file = e.target.files[0];
@@ -365,7 +230,6 @@ document.getElementById('imgInput').addEventListener('change', (e) => {
 
 let currentSourceNode = null;
 
-// 事前オーディオ合成＋送信処理 (OfflineAudioContext)
 async function generateAndTransmit() {
   const speed = document.getElementById('speedSel').value;
   let slotMs = 50;
@@ -374,13 +238,9 @@ async function generateAndTransmit() {
   if (speed === 'slow') slotMs = 120;
 
   let payload = '';
-  if (sendMode === 'text') {
-    payload = document.getElementById('txInput').value;
-  } else {
-    if (!preparedImgDataUrl) {
-      alert('画像を選択してください (最大3MB)');
-      return;
-    }
+  if (sendMode === 'text') payload = document.getElementById('txInput').value;
+  else {
+    if (!preparedImgDataUrl) { alert('画像を選択してください'); return; }
     payload = preparedImgDataUrl;
   }
 
@@ -395,29 +255,27 @@ async function generateAndTransmit() {
   stats.style.display = 'inline-flex';
   stats.innerText = 'RENDERING...';
 
-  // 1. 全体の時間を計算
-  const preambleTime = 0.6; // 600ms のプリアンブル（2文字落ち対策）
   const duration = slotMs / 1000;
+  // プリアンブル構成: AGC安定(300ms) + 同期切り替えパルス4個 (4 * duration)
+  const preambleTime = 0.3 + (4 * duration);
   const totalTime = preambleTime + bytes.length * duration + 0.2;
 
   const sampleRate = 44100;
   const offlineCtx = new OfflineAudioContext(1, Math.ceil(sampleRate * totalTime), sampleRate);
 
-  // 2. オフラインレンダリングで波形を事前生成
   let t = 0.05;
 
-  // --- 2文字落ち対策: 明確な同期アライメント音 ---
-  // A. マイクAGC調整音 (300ms)
+  // 1. AGCアライメント（ダミー全周波数出力）
   addToneBundleToOffline(offlineCtx, 400, [700, 1200, 1700, 2200], t, 0.3);
   t += 0.32;
 
-  // B. 初期のクロック状態を確実に受信側に設定させるトリガー音 (500Hz -> 400Hz)
-  addToneBundleToOffline(offlineCtx, 500, [700, 1200, 1700, 2200], t, duration);
-  t += duration;
-  addToneBundleToOffline(offlineCtx, 400, [700, 1200, 1700, 2200], t, duration);
-  t += duration;
+  // 2. クロック同期パルス（CLK_FREQS[1] -> CLK_FREQS[0] で本データ直前をCLK_FREQS[1]にアライン）
+  addToneBundleToOffline(offlineCtx, CLK_FREQS[0], [700, 1200, 1700, 2200], t, duration); t += duration;
+  addToneBundleToOffline(offlineCtx, CLK_FREQS[1], [700, 1200, 1700, 2200], t, duration); t += duration;
+  addToneBundleToOffline(offlineCtx, CLK_FREQS[0], [700, 1200, 1700, 2200], t, duration); t += duration;
+  addToneBundleToOffline(offlineCtx, CLK_FREQS[1], [700, 1200, 1700, 2200], t, duration); t += duration;
 
-  // C. 本データの変調波形レンダリング
+  // 3. 本データ送信 (i=0は CLK_FREQS[0] からスタートするため確実にトグルする)
   for (let i = 0; i < bytes.length; i++) {
     const b = bytes[i];
     const clkFreq = (i % 2 === 0) ? CLK_FREQS[0] : CLK_FREQS[1];
@@ -431,10 +289,7 @@ async function generateAndTransmit() {
     t += duration;
   }
 
-  // レンダリング実行
   const renderedBuffer = await offlineCtx.startRendering();
-
-  // 3. リアルタイム再生
   const realCtx = getCtx();
   currentSourceNode = realCtx.createBufferSource();
   currentSourceNode.buffer = renderedBuffer;
@@ -523,7 +378,7 @@ async function startRx() {
     const src = ctx.createMediaStreamSource(rxStream);
     analyser = ctx.createAnalyser();
     analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0.15;
+    analyser.smoothingTimeConstant = 0.12;
     src.connect(analyser);
 
     rxRunning = true;
@@ -659,7 +514,8 @@ function renderSpecLoop() {
       document.getElementById('vuB4Val').innerText = BANDS[3][bandResults[3].idx];
 
       const now = performance.now();
-      if (lastClkState !== null && lastClkState !== activeClkIdx && (now - lastClkChangeTime > 18)) {
+      // クロックのトグル（反転）を検出した瞬間だけ復号処理を実行
+      if (lastClkState !== null && lastClkState !== activeClkIdx && (now - lastClkChangeTime > 15)) {
         const b0_1 = bandResults[0].idx;
         const b2_3 = bandResults[1].idx;
         const b4_5 = bandResults[2].idx;
@@ -674,6 +530,7 @@ function renderSpecLoop() {
       led.className = 'led closed';
       rxStatus.innerText = 'SQUELCH CLOSED';
       rxStatus.style.color = 'var(--muted)';
+      // スケルチ切断時は状態をクリア
       lastClkState = null;
     }
   }
