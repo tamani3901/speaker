@@ -2,616 +2,593 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>音階音響通信 (スペクトログラム＋スケルチ調整)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Turbo Multi-Carrier Acoustic Modem</title>
   <style>
-    body { font-family: sans-serif; max-width: 720px; margin: 20px auto; padding: 15px; background: #f4f6f8; }
-    .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
-    textarea { width: 100%; height: 60px; margin-bottom: 10px; box-sizing: border-box; font-size: 16px; }
-    button { padding: 12px 20px; font-size: 15px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; margin-right: 8px; }
-    button:disabled { background: #ccc; cursor: not-allowed; }
-    .btn-send { background: #28a745; }
-    .btn-listen { background: #007bff; }
-    .btn-cancel { background: #dc3545; }
-    select, input[type="checkbox"], input[type="range"] { padding: 6px; font-size: 14px; border-radius: 6px; margin-bottom: 6px; margin-right: 10px; }
-    .status { margin-top: 10px; font-size: 14px; font-weight: bold; color: #d9534f; }
-    .result { font-size: 26px; font-weight: bold; color: #007bff; padding: 12px; background: #e8f4ff; border-radius: 6px; min-height: 36px; word-break: break-all; margin-top: 10px; text-align: center; }
-    .log { font-family: monospace; font-size: 11px; color: #333; background: #eee; padding: 8px; border-radius: 4px; margin-top: 10px; height: 140px; overflow-y: auto; white-space: pre-wrap; }
-    .mode-group, .option-group, .btn-group { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 6px 0; }
-    .mode-group label, .option-group label { font-weight: bold; margin-right: 4px; }
-    .option-group label { font-weight: normal; display: flex; align-items: center; gap: 4px; }
-    canvas { width: 100%; height: 150px; background: #111; border-radius: 6px; display: block; margin: 6px 0; }
-    .slider-group { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .slider-group label { font-weight: bold; }
-    .slider-group input[type="range"] { flex: 1; min-width: 120px; }
-    .slider-group span { min-width: 40px; text-align: center; font-weight: bold; color: #007bff; }
+    :root {
+      --bg: #080c14;
+      --panel: #0f172a;
+      --border: #1e293b;
+      --cyan: #00f0ff;
+      --green: #00ff66;
+      --yellow: #ffd700;
+      --magenta: #ff007f;
+      --red: #ff3344;
+      --text: #e2e8f0;
+      --muted: #64748b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Consolas', 'SF Mono', monospace; }
+    body { background: var(--bg); color: var(--text); padding: 16px; display: flex; justify-content: center; }
+    .app { width: 100%; max-width: 1100px; display: flex; flex-direction: column; gap: 16px; }
+
+    header {
+      text-align: center;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+    }
+    header h1 {
+      font-size: 1.6rem;
+      color: var(--cyan);
+      letter-spacing: 2px;
+      text-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
+    }
+    header p { color: var(--muted); font-size: 0.82rem; margin-top: 4px; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1.15fr; gap: 16px; }
+    @media (max-width: 850px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.6);
+    }
+    .card-title {
+      font-size: 1rem;
+      font-weight: bold;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-left: 4px solid var(--cyan);
+      padding-left: 8px;
+    }
+    .card-title.rx { border-left-color: var(--green); }
+
+    textarea {
+      width: 100%;
+      background: #050811;
+      border: 1px solid #23324d;
+      color: var(--cyan);
+      padding: 10px;
+      border-radius: 4px;
+      font-size: 0.95rem;
+      resize: vertical;
+    }
+    textarea:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 8px rgba(0,240,255,0.3); }
+
+    .btn {
+      background: #1e293b;
+      color: var(--text);
+      border: 1px solid #334155;
+      padding: 8px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+    .btn:hover { background: #334155; }
+    .btn-cyan { background: #006680; border-color: var(--cyan); color: #fff; }
+    .btn-cyan:hover { background: #0088aa; box-shadow: 0 0 10px rgba(0,240,255,0.4); }
+    .btn-green { background: #006633; border-color: var(--green); color: #fff; }
+    .btn-green:hover { background: #008844; box-shadow: 0 0 10px rgba(0,255,102,0.4); }
+    .btn-red { background: #881122; border-color: var(--red); color: #fff; }
+    .btn-red:hover { background: #aa1133; }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+    select {
+      background: #050811;
+      color: #fff;
+      border: 1px solid #23324d;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+
+    .spec-wrap {
+      position: relative;
+      background: #03050a;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    canvas { display: block; width: 100%; height: 210px; }
+
+    .vu-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
+      margin-top: 8px;
+      background: #050811;
+      padding: 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+    .vu-ch {
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--muted);
+      border: 1px solid #1a2333;
+      padding: 4px 2px;
+      border-radius: 3px;
+    }
+    .vu-val { font-weight: bold; font-size: 0.8rem; margin-top: 2px; }
+
+    .squelch-box {
+      margin-top: 8px;
+      background: #070b14;
+      padding: 8px 12px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+    .squelch-hdr {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      margin-bottom: 4px;
+    }
+    input[type="range"] { width: 100%; accent-color: var(--yellow); cursor: pointer; }
+
+    .led {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #333;
+      display: inline-block;
+    }
+    .led.open { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .led.closed { background: var(--red); }
+
+    .out-box {
+      background: #04060c;
+      border: 1px solid #1a2333;
+      padding: 8px;
+      min-height: 50px;
+      max-height: 90px;
+      overflow-y: auto;
+      border-radius: 4px;
+      word-break: break-all;
+      font-size: 0.9rem;
+      margin-top: 6px;
+    }
+    .out-text { color: var(--green); }
+    .out-hex { color: var(--muted); font-size: 0.75rem; }
+
+    .stats-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      background: #131d2e;
+      padding: 3px 8px;
+      border-radius: 3px;
+      color: var(--cyan);
+    }
+
+    .spec-legend {
+      display: flex;
+      gap: 8px;
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+    .legend-dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
   </style>
 </head>
 <body>
 
-  <h2>🎵 音階音響通信 (スペクトログラム＋スケルチ調整)</h2>
+<div class="app">
+  <header>
+    <h1>TURBO MULTI-CARRIER MODEM</h1>
+    <p>5波同時合成（パラレル4-FSK＋同期クロック）による高速・高密度音響データ通信</p>
+  </header>
 
-  <div class="card">
-    <h3>1. 送信設定</h3>
-    <div class="mode-group">
-      <label>送信モード:</label>
-      <select id="txMode">
-        <option value="accurate">🛡️ 正確 (100ms×3)</option>
-        <option value="fast">⚡ 高速 (60ms×2)</option>
-        <option value="turbo">🚀 正確高速 (60ms×3)</option>
-      </select>
-    </div>
-    <div class="option-group">
-      <label><input type="checkbox" id="txChordMode"> 和音 (2ビット/シンボル)</label>
-      <label><input type="checkbox" id="txHeaderBoost"> ヘッダー強固 (4回)</label>
-    </div>
-    <textarea id="inputText" placeholder="日本語・漢字・ひらがなも送信できます">こんにちは世界</textarea>
-    <button class="btn-send" id="btnPlay">🔊 音で送信</button>
-  </div>
+  <div class="grid">
+    <!-- TX 送信側 -->
+    <div class="card">
+      <div class="card-title">📡 複合音 送信機 (5-Tone TX)</div>
+      
+      <label style="font-size:0.75rem; color:var(--muted);">送信データ (日本語・漢字・長文も高速送信):</label>
+      <textarea id="txInput" rows="4">こんにちは！マルチキャリア音響通信の高速テスト。漢字も即座に送信できます。</textarea>
 
-  <div class="card">
-    <h3>2. 受信設定</h3>
-    <div class="mode-group">
-      <label>受信モード:</label>
-      <select id="rxMode">
-        <option value="accurate">🛡️ 正確 (100ms×3)</option>
-        <option value="fast">⚡ 高速 (60ms×2)</option>
-        <option value="turbo">🚀 正確高速 (60ms×3)</option>
-      </select>
+      <div class="row">
+        <label style="font-size:0.8rem; color:var(--muted);">伝送速度:</label>
+        <select id="speedSel">
+          <option value="turbo">⚡ 超高速 Turbo (35ms/byte: 約230bps)</option>
+          <option value="fast" selected>🚀 高速 Fast (50ms/byte: 約160bps)</option>
+          <option value="normal">🚗 標準 Normal (80ms/byte: 約100bps)</option>
+          <option value="slow">🛡 安定 Slow (120ms/byte: 約65bps)</option>
+        </select>
+      </div>
+
+      <div class="row" style="margin-top:12px;">
+        <button id="sendBtn" class="btn btn-cyan">▶ 送信開始 (複合バースト音)</button>
+        <button id="stopBtn" class="btn btn-red" disabled>■ 中断</button>
+        <span id="txStats" class="stats-badge" style="display:none;">READY</span>
+      </div>
+
+      <div style="margin-top:14px; border-top:1px dashed var(--border); padding-top:10px;">
+        <div style="font-size:0.75rem; color:var(--muted); margin-bottom:6px;">通信仕様:</div>
+        <ul style="font-size:0.72rem; color:var(--muted); line-height:1.5; padding-left:16px;">
+          <li><b>CLK (同期):</b> 400Hz / 500Hz 交互トグル</li>
+          <li><b>Band 1 (bit 0-1):</b> 700 / 800 / 900 / 1000 Hz</li>
+          <li><b>Band 2 (bit 2-3):</b> 1200 / 1300 / 1400 / 1500 Hz</li>
+          <li><b>Band 3 (bit 4-5):</b> 1700 / 1800 / 1900 / 2000 Hz</li>
+          <li><b>Band 4 (bit 6-7):</b> 2200 / 2300 / 2400 / 2500 Hz</li>
+          <li><b>構造:</b> 1スロットあたり5周波数を同時多重送信（1音で1バイト転送）</li>
+        </ul>
+      </div>
     </div>
-    <div class="option-group">
-      <label><input type="checkbox" id="rxChordMode"> 和音 (2ビット/シンボル)</label>
-      <label><input type="checkbox" id="rxHeaderBoost"> ヘッダー強固 (4回)</label>
+
+    <!-- RX 受信側 -->
+    <div class="card">
+      <div class="card-title rx">👂 リアルタイム・マルチスペアナ (RX)</div>
+
+      <div class="row">
+        <button id="rxBtn" class="btn btn-green">🎤 マイク受信開始</button>
+        <button id="clearBtn" class="btn">クリア</button>
+        <div style="display:inline-flex; align-items:center; gap:6px; margin-left:auto;">
+          <div id="rxLed" class="led closed"></div>
+          <span id="rxStatus" style="font-size:0.75rem; color:var(--muted);">STANDBY</span>
+        </div>
+      </div>
+
+      <div class="spec-wrap">
+        <canvas id="specCanvas"></canvas>
+      </div>
+
+      <div class="spec-legend">
+        <div><span class="legend-dot" style="background:#00f0ff;"></span> CLK</div>
+        <div><span class="legend-dot" style="background:#00ff66;"></span> B1(0-1)</div>
+        <div><span class="legend-dot" style="background:#ffd700;"></span> B2(2-3)</div>
+        <div><span class="legend-dot" style="background:#ff8800;"></span> B3(4-5)</div>
+        <div><span class="legend-dot" style="background:#ff007f;"></span> B4(6-7)</div>
+        <div><span class="legend-dot" style="background:var(--red);"></span> スケルチ線</div>
+      </div>
+
+      <div class="vu-grid">
+        <div class="vu-ch" id="vuClk"><span style="color:var(--cyan)">CLK</span><div class="vu-val" id="vuClkVal">-</div></div>
+        <div class="vu-ch" id="vuB1"><span style="color:var(--green)">B1</span><div class="vu-val" id="vuB1Val">-</div></div>
+        <div class="vu-ch" id="vuB2"><span style="color:var(--yellow)">B2</span><div class="vu-val" id="vuB2Val">-</div></div>
+        <div class="vu-ch" id="vuB3"><span style="color:#ff8800">B3</span><div class="vu-val" id="vuB3Val">-</div></div>
+        <div class="vu-ch" id="vuB4"><span style="color:var(--magenta)">B4</span><div class="vu-val" id="vuB4Val">-</div></div>
+      </div>
+
+      <div class="squelch-box">
+        <div class="squelch-hdr">
+          <span>スケルチ (Squelch Level):</span>
+          <span id="sqVal" style="color:var(--yellow); font-weight:bold;">110</span>
+        </div>
+        <input type="range" id="sqSlider" min="20" max="230" value="110">
+      </div>
+
+      <label style="font-size:0.75rem; color:var(--muted); margin-top:8px; display:block;">受信生データ (HEX):</label>
+      <div id="rxHex" class="out-box out-hex">---</div>
+
+      <label style="font-size:0.75rem; color:var(--muted); margin-top:4px; display:block;">復号テキスト (Decoded Output):</label>
+      <div id="rxText" class="out-box out-text"></div>
     </div>
-    <div class="slider-group">
-      <label>スケルチ (ノイズカット閾値):</label>
-      <input type="range" id="squelchSlider" min="0" max="80" value="30">
-      <span id="squelchValue">30%</span>
-    </div>
-    <canvas id="spectrogram"></canvas>
-    <div class="btn-group">
-      <button class="btn-listen" id="btnListen">🎤 受信開始</button>
-      <button class="btn-cancel" id="btnCancel" disabled>⏹️ キャンセル</button>
-    </div>
-    <div id="status" class="status">待機中</div>
-    <div id="outputText" class="result">---</div>
-    <div id="log" class="log">ログがここに表示されます</div>
   </div>
+</div>
 
 <script>
-// ---------- 音階定義 ----------
-const FREQ_H0 = 523.25;  // C5 (bit 0)
-const FREQ_H1 = 659.25;  // E5 (bit 1)
-const FREQ_ST  = 783.99; // G5 (スタート音)
-const FREQ_L0 = 261.63;  // C4 (和音bit 0)
-const FREQ_L1 = 329.63;  // E4 (和音bit 1)
+const CLK_FREQS = [400, 500];
+const BANDS = [
+  [700, 800, 900, 1000],
+  [1200, 1300, 1400, 1500],
+  [1700, 1800, 1900, 2000],
+  [2200, 2300, 2400, 2500]
+];
+const BAND_COLORS = ['#00ff66', '#ffd700', '#ff8800', '#ff007f'];
 
 let audioCtx = null;
 function getCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
 }
 
-function log(msg) {
-  const el = document.getElementById('log');
-  el.textContent += "\n" + msg;
-  el.scrollTop = el.scrollHeight;
-}
+let txAbort = false;
 
-// ---------- ハミング符号 ----------
-function encodeHamming(d4) {
-  const d = [(d4>>3)&1, (d4>>2)&1, (d4>>1)&1, d4&1];
-  const p1 = d[0] ^ d[1] ^ d[3];
-  const p2 = d[0] ^ d[2] ^ d[3];
-  const p3 = d[1] ^ d[2] ^ d[3];
-  return (d[0]<<6)|(d[1]<<5)|(d[2]<<4)|(d[3]<<3)|(p1<<2)|(p2<<1)|p3;
-}
-
-function decodeHamming(c7) {
-  const b = [];
-  for (let i = 6; i >= 0; i--) b.push((c7 >> i) & 1);
-  const s1 = b[0] ^ b[1] ^ b[3] ^ b[4];
-  const s2 = b[0] ^ b[2] ^ b[3] ^ b[5];
-  const s3 = b[1] ^ b[2] ^ b[3] ^ b[6];
-  const err = (s1 << 2) | (s2 << 1) | s3;
-  if (err >= 1 && err <= 7) b[err - 1] ^= 1;
-  return (b[0]<<3) | (b[1]<<2) | (b[2]<<1) | b[3];
-}
-
-function encodeByteTo14Bits(byteVal) {
-  const high = encodeHamming((byteVal >> 4) & 0x0F);
-  const low  = encodeHamming(byteVal & 0x0F);
-  let bits = [];
-  for (let i = 6; i >= 0; i--) bits.push((high >> i) & 1);
-  for (let i = 6; i >= 0; i--) bits.push((low >> i) & 1);
-  return bits;
-}
-
-function decode14BitsToByte(bits14) {
-  if (bits14.length < 14) return 0;
-  const highCode = bits14.slice(0, 7).reduce((acc, b) => (acc << 1) | b, 0);
-  const lowCode  = bits14.slice(7, 14).reduce((acc, b) => (acc << 1) | b, 0);
-  return (decodeHamming(highCode) << 4) | decodeHamming(lowCode);
-}
-
-// ---------- 送信ビット構築 ----------
-function buildBits(text, mode, chordMode, headerBoost) {
-  const bytes = new TextEncoder().encode(text);
-  let rawBits = [];
-  const isFast = (mode === 'fast' || mode === 'turbo');
-  const header = (isFast ? 1 : 0) << 7 | (bytes.length & 0x7F);
-  const headerBits = encodeByteTo14Bits(header);
-
-  let dataRepeat;
-  if (mode === 'accurate') dataRepeat = 3;
-  else if (mode === 'fast') dataRepeat = 2;
-  else if (mode === 'turbo') dataRepeat = 3;
-  const headerRepeat = headerBoost ? 4 : dataRepeat;
-
-  for (let bit of headerBits) {
-    for (let i = 0; i < headerRepeat; i++) rawBits.push(bit);
-  }
-  for (let b of bytes) {
-    const dataBits = encodeByteTo14Bits(b);
-    for (let bit of dataBits) {
-      for (let i = 0; i < dataRepeat; i++) rawBits.push(bit);
-    }
-  }
-
-  if (chordMode) {
-    let paired = [];
-    for (let i = 0; i < rawBits.length; i += 2) {
-      paired.push(rawBits[i] || 0, rawBits[i+1] || 0);
-    }
-    return paired;
-  }
-  return rawBits;
-}
-
-// ---------- 送信実行 ----------
-document.getElementById('btnPlay').onclick = () => {
-  const ctx = getCtx();
-  const text = document.getElementById('inputText').value;
-  const mode = document.getElementById('txMode').value;
-  const chordMode = document.getElementById('txChordMode').checked;
-  const headerBoost = document.getElementById('txHeaderBoost').checked;
+async function transmit() {
+  const text = document.getElementById('txInput').value;
   if (!text) return;
 
-  let tBit;
-  if (mode === 'accurate') tBit = 0.100;
-  else if (mode === 'fast') tBit = 0.060;
-  else if (mode === 'turbo') tBit = 0.060;
+  const ctx = getCtx();
+  const speed = document.getElementById('speedSel').value;
+  let slotMs = 50;
+  if (speed === 'turbo') slotMs = 35;
+  if (speed === 'normal') slotMs = 80;
+  if (speed === 'slow') slotMs = 120;
 
-  const bits = buildBits(text, mode, chordMode, headerBoost);
-  const now = ctx.currentTime + 0.1;
+  const bytes = new TextEncoder().encode(text);
+  txAbort = false;
 
-  const oscs = [];
-  const gains = [];
-  for (let i = 0; i < (chordMode ? 2 : 1); i++) {
+  document.getElementById('sendBtn').disabled = true;
+  document.getElementById('stopBtn').disabled = false;
+  const stats = document.getElementById('txStats');
+  stats.style.display = 'inline-flex';
+
+  const startTime = ctx.currentTime + 0.05;
+  let t = startTime;
+  const duration = slotMs / 1000;
+
+  playToneBundle(ctx, 400, [700, 1200, 1700, 2200], t, 0.08);
+  t += 0.09;
+
+  for (let i = 0; i < bytes.length; i++) {
+    if (txAbort) break;
+
+    const b = bytes[i];
+    const clkFreq = (i % 2 === 0) ? CLK_FREQS[0] : CLK_FREQS[1];
+
+    const f1 = BANDS[0][b & 0x03];
+    const f2 = BANDS[1][(b >> 2) & 0x03];
+    const f3 = BANDS[2][(b >> 4) & 0x03];
+    const f4 = BANDS[3][(b >> 6) & 0x03];
+
+    playToneBundle(ctx, clkFreq, [f1, f2, f3, f4], t, duration);
+    t += duration;
+
+    stats.innerText = `SEND: ${i + 1}/${bytes.length} Bytes`;
+  }
+
+  const waitMs = (t - ctx.currentTime) * 1000;
+  await new Promise(r => setTimeout(r, Math.max(10, waitMs)));
+
+  document.getElementById('sendBtn').disabled = false;
+  document.getElementById('stopBtn').disabled = true;
+  stats.innerText = 'COMPLETE';
+}
+
+function playToneBundle(ctx, clkFreq, dataFreqs, startTime, duration) {
+  const allFreqs = [clkFreq, ...dataFreqs];
+  const masterGain = ctx.createGain();
+
+  masterGain.gain.setValueAtTime(0.0001, startTime);
+  masterGain.gain.linearRampToValueAtTime(0.18, startTime + 0.004);
+  masterGain.gain.setValueAtTime(0.18, startTime + duration - 0.004);
+  masterGain.gain.linearRampToValueAtTime(0.0001, startTime + duration);
+  masterGain.connect(ctx.destination);
+
+  allFreqs.forEach(freq => {
     const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    oscs.push(osc);
-    gains.push(gain);
-  }
-
-  oscs[0].frequency.setValueAtTime(FREQ_ST, now);
-  gains[0].gain.setValueAtTime(0, now);
-  gains[0].gain.linearRampToValueAtTime(0.2, now + 0.03);
-  if (chordMode) {
-    gains[1].gain.setValueAtTime(0, now);
-  }
-
-  let t = now + 0.3;
-  let bitIndex = 0;
-  while (bitIndex < bits.length) {
-    const bit1 = bits[bitIndex];
-    const bit2 = chordMode ? (bits[bitIndex+1] || 0) : 0;
-    oscs[0].frequency.setValueAtTime(bit1 === 1 ? FREQ_H1 : FREQ_H0, t);
-    gains[0].gain.setValueAtTime(0.2, t);
-    if (chordMode) {
-      oscs[1].frequency.setValueAtTime(bit2 === 1 ? FREQ_L1 : FREQ_L0, t);
-      gains[1].gain.setValueAtTime(0.2, t);
-    }
-    t += tBit;
-    bitIndex += chordMode ? 2 : 1;
-  }
-
-  const endTime = t;
-  gains.forEach(g => {
-    g.gain.setValueAtTime(0.2, endTime - 0.02);
-    g.gain.linearRampToValueAtTime(0, endTime);
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    osc.connect(masterGain);
+    osc.start(startTime);
+    osc.stop(startTime + duration);
   });
-  oscs.forEach(osc => { osc.start(now); osc.stop(endTime); });
-
-  const modeName = { accurate:'正確', fast:'高速', turbo:'正確高速' }[mode];
-  log(`送信: "${text}" (${modeName} ${chordMode?'和音':'単音'} ${headerBoost?'ヘッダー強固':''})`);
-};
-
-// ---------- スペクトログラム ----------
-const canvas = document.getElementById('spectrogram');
-const ctxCanvas = canvas.getContext('2d');
-let spectrogramData = []; // 縦軸:周波数ビン, 横軸:時間
-const MAX_HISTORY = 200;
-
-function drawSpectrogram(dataArray, binSize, freqStart, freqEnd) {
-  const width = canvas.width;
-  const height = canvas.height;
-  const imageData = ctxCanvas.createImageData(width, height);
-
-  // 表示する周波数範囲 (ビンインデックス)
-  const startBin = Math.floor(freqStart / binSize);
-  const endBin = Math.floor(freqEnd / binSize);
-  const binRange = endBin - startBin;
-
-  // スペクトログラムデータを更新 (新しい列を追加)
-  const column = [];
-  for (let i = startBin; i < endBin; i++) {
-    column.push(dataArray[i] || 0);
-  }
-  spectrogramData.push(column);
-  if (spectrogramData.length > MAX_HISTORY) spectrogramData.shift();
-
-  // 描画
-  const colCount = spectrogramData.length;
-  for (let x = 0; x < width; x++) {
-    const srcX = Math.floor((x / width) * colCount);
-    if (srcX >= colCount) continue;
-    const col = spectrogramData[srcX];
-    for (let y = 0; y < height; y++) {
-      const srcY = Math.floor((y / height) * col.length);
-      const val = col[srcY] || 0;
-      // パワーを色に変換 (青→緑→赤)
-      const intensity = Math.min(val / 128, 1);
-      const r = Math.min(intensity * 2, 1) * 255;
-      const g = Math.min((1 - Math.abs(intensity - 0.5) * 2), 1) * 255;
-      const b = Math.max((1 - intensity * 2), 0) * 255;
-      const idx = (y * width + x) * 4;
-      imageData.data[idx] = r;
-      imageData.data[idx+1] = g;
-      imageData.data[idx+2] = b;
-      imageData.data[idx+3] = 255;
-    }
-  }
-  ctxCanvas.putImageData(imageData, 0, 0);
 }
 
-// ---------- 受信側 (スペクトログラム＋スケルチ) ----------
-let receiveLoopId = null;
-let spectrogramLoopId = null;
-let mediaStream = null;
-let isReceiving = false;
-let analyserForSpectrogram = null;
+document.getElementById('sendBtn').addEventListener('click', transmit);
+document.getElementById('stopBtn').addEventListener('click', () => { txAbort = true; });
 
-function stopReceive(resetUI = true) {
-  if (receiveLoopId) {
-    clearInterval(receiveLoopId);
-    receiveLoopId = null;
-  }
-  if (spectrogramLoopId) {
-    clearInterval(spectrogramLoopId);
-    spectrogramLoopId = null;
-  }
-  if (mediaStream) {
-    mediaStream.getTracks().forEach(t => t.stop());
-    mediaStream = null;
-  }
-  isReceiving = false;
-  document.getElementById('btnListen').disabled = false;
-  document.getElementById('btnCancel').disabled = true;
-  if (resetUI) {
-    document.getElementById('status').textContent = '⏹️ キャンセル';
-    document.getElementById('status').style.color = '#d9534f';
-  }
-}
+let rxRunning = false;
+let rxStream = null;
+let analyser = null;
+let squelchLevel = 110;
 
-document.getElementById('btnCancel').onclick = () => {
-  log('⚠️ ユーザーキャンセル');
-  stopReceive(true);
-};
+let receivedBytes = [];
+let lastClkState = null;
+let lastClkChangeTime = 0;
 
-// スケルチスライダー
-const squelchSlider = document.getElementById('squelchSlider');
-const squelchValue = document.getElementById('squelchValue');
-squelchSlider.oninput = () => {
-  squelchValue.textContent = squelchSlider.value + '%';
-};
+const sqSlider = document.getElementById('sqSlider');
+const sqValDisplay = document.getElementById('sqVal');
+sqSlider.addEventListener('input', (e) => {
+  squelchLevel = parseInt(e.target.value);
+  sqValDisplay.innerText = squelchLevel;
+});
 
-document.getElementById('btnListen').onclick = async () => {
-  const btn = document.getElementById('btnListen');
-  const status = document.getElementById('status');
-  const logEl = document.getElementById('log');
-  const output = document.getElementById('outputText');
-  
-  if (isReceiving) stopReceive(false);
-  
-  logEl.textContent = "--- ログ開始 ---";
-  output.textContent = "---";
-  btn.disabled = true;
-  document.getElementById('btnCancel').disabled = false;
-  status.textContent = "🎤 マイク起動中...";
-  status.style.color = '#d9534f';
+document.getElementById('clearBtn').addEventListener('click', () => {
+  receivedBytes = [];
+  document.getElementById('rxHex').innerText = '---';
+  document.getElementById('rxText').innerText = '';
+});
 
+document.getElementById('rxBtn').addEventListener('click', async () => {
+  if (rxRunning) stopRx();
+  else await startRx();
+});
+
+async function startRx() {
   try {
-    mediaStream = await navigator.mediaDevices.getUserMedia({
+    const ctx = getCtx();
+    rxStream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
     });
-  } catch(e) {
-    log('❌ マイクアクセス拒否: ' + e.message);
-    stopReceive(true);
-    return;
-  }
+    const src = ctx.createMediaStreamSource(rxStream);
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0.15;
+    src.connect(analyser);
 
-  const ctx = getCtx();
-  const source = ctx.createMediaStreamSource(mediaStream);
-  const analyser = ctx.createAnalyser();
-  analyser.fftSize = 2048;
-  source.connect(analyser);
-  analyserForSpectrogram = analyser;
-
-  const binSize = ctx.sampleRate / analyser.fftSize;
-  // 表示する周波数範囲 (100Hz〜2000Hz)
-  const freqStart = 100;
-  const freqEnd = 2000;
-
-  // スペクトログラム描画ループ (100ms間隔)
-  spectrogramLoopId = setInterval(() => {
-    const data = new Uint8Array(analyser.frequencyBinCount);
-    analyser.getByteFrequencyData(data);
-    drawSpectrogram(data, binSize, freqStart, freqEnd);
-  }, 100);
-
-  // 受信処理 (従来のコードを流用、スケルチを動的に適用)
-  const bH0 = Math.round(FREQ_H0 / binSize);
-  const bH1 = Math.round(FREQ_H1 / binSize);
-  const bST = Math.round(FREQ_ST / binSize);
-  const bL0 = Math.round(FREQ_L0 / binSize);
-  const bL1 = Math.round(FREQ_L1 / binSize);
-
-  const rxMode = document.getElementById('rxMode').value;
-  const chordMode = document.getElementById('rxChordMode').checked;
-  const headerBoost = document.getElementById('rxHeaderBoost').checked;
-
-  let tBitMs, dataRepeat;
-  if (rxMode === 'accurate') { tBitMs = 100; dataRepeat = 3; }
-  else if (rxMode === 'fast') { tBitMs = 60; dataRepeat = 2; }
-  else if (rxMode === 'turbo') { tBitMs = 60; dataRepeat = 3; }
-
-  const headerRepeat = headerBoost ? 4 : dataRepeat;
-  log(`受信モード: ${rxMode} ${chordMode?'和音':'単音'} ヘッダー${headerRepeat}回 データ${dataRepeat}回`);
-
-  const ST_THRESHOLD = 55;
-  let state = 'idle';
-  let pilotStartTime = 0, pilotEndTime = 0;
-  let rawSamples = [], bitStream = [];
-  let currentBitStart = 0, currentBitEnd = 0;
-  let bitIndex = 0, totalBits = 0;
-  let headerDecoded = false, headerDataLen = 0, receiveCompleted = false;
-
-  function resetReceiveState() {
-    state = 'idle';
-    pilotStartTime = 0; pilotEndTime = 0;
-    rawSamples = []; bitStream = [];
-    currentBitStart = 0; currentBitEnd = 0;
-    bitIndex = 0; totalBits = 0;
-    headerDecoded = false; headerDataLen = 0; receiveCompleted = false;
-  }
-
-  receiveLoopId = setInterval(() => {
-    const data = new Uint8Array(analyser.frequencyBinCount);
-    analyser.getByteFrequencyData(data);
-    const now = Date.now();
-
-    if (!isReceiving) return;
-
-    // スケルチ閾値 (スライダー値)
-    const squelchPercent = parseFloat(squelchSlider.value) / 100;
-    let sum = 0;
-    for (let i = 0; i < data.length; i++) sum += data[i];
-    const avg = sum / data.length;
-    const threshold = avg * squelchPercent;
-
-    function getPower(index) {
-      return data[index] > threshold ? data[index] : 0;
-    }
-
-    const stPower = getPower(bST);
-    const isPilotOn = stPower > ST_THRESHOLD;
-
-    if (state === 'idle') {
-      if (isPilotOn) {
-        state = 'pilot_on';
-        pilotStartTime = now;
-        status.textContent = '📡 スタート音検出中...';
-        log('スタート音 ON');
-      }
-      return;
-    }
-
-    if (state === 'pilot_on') {
-      if (!isPilotOn) {
-        pilotEndTime = now;
-        state = 'pilot_off';
-        const margin = tBitMs * 0.20;
-        const dataStartTime = pilotEndTime + margin;
-        currentBitStart = dataStartTime;
-        currentBitEnd = dataStartTime + tBitMs;
-        bitIndex = 0;
-        rawSamples = [];
-        bitStream = [];
-        headerDecoded = false;
-        status.textContent = '⚡ データ受信開始';
-        log(`パイロット OFF (${pilotEndTime - pilotStartTime}ms) 開始+${Math.round(margin)}ms`);
-        return;
-      }
-      if (now - pilotStartTime > 500) {
-        log('⚠️ パイロットタイムアウト');
-        resetReceiveState();
-        status.textContent = '🔄 リセット';
-      }
-      return;
-    }
-
-    if (state === 'pilot_off' || state === 'receiving') {
-      if (state === 'pilot_off') state = 'receiving';
-
-      if (now >= currentBitStart && now < currentBitEnd) {
-        const pH0 = getPower(bH0);
-        const pH1 = getPower(bH1);
-        const pL0 = chordMode ? getPower(bL0) : 0;
-        const pL1 = chordMode ? getPower(bL1) : 0;
-        rawSamples.push({ pH0, pH1, pL0, pL1 });
-      }
-
-      if (now >= currentBitEnd) {
-        if (rawSamples.length > 0) {
-          let avgH0=0, avgH1=0, avgL0=0, avgL1=0;
-          for (let s of rawSamples) {
-            avgH0 += s.pH0; avgH1 += s.pH1;
-            avgL0 += s.pL0; avgL1 += s.pL1;
-          }
-          avgH0 /= rawSamples.length; avgH1 /= rawSamples.length;
-          avgL0 /= rawSamples.length; avgL1 /= rawSamples.length;
-
-          const bitH = avgH1 > avgH0 ? 1 : 0;
-          bitStream.push(bitH); bitIndex++;
-          if (chordMode) {
-            const bitL = avgL1 > avgL0 ? 1 : 0;
-            bitStream.push(bitL); bitIndex++;
-          }
-          status.textContent = `📥 受信中... ${bitIndex} ビット`;
-        }
-
-        currentBitStart = currentBitEnd;
-        currentBitEnd = currentBitStart + tBitMs;
-        rawSamples = [];
-
-        const bitsPerHeader = 14 * headerRepeat * (chordMode ? 2 : 1);
-        if (!headerDecoded && bitStream.length >= bitsPerHeader) {
-          const headerRaw = bitStream.slice(0, bitsPerHeader);
-          let headerBits14 = [];
-          if (chordMode) {
-            for (let i = 0; i < headerRaw.length; i += 2) headerBits14.push(headerRaw[i]);
-          } else {
-            headerBits14 = headerRaw;
-          }
-          let voted14 = [];
-          for (let i = 0; i < 14 * headerRepeat; i += headerRepeat) {
-            let sum = 0;
-            for (let j = 0; j < headerRepeat; j++) sum += headerBits14[i+j] || 0;
-            voted14.push(sum >= headerRepeat/2 ? 1 : 0);
-          }
-          const headerByte = decode14BitsToByte(voted14);
-          const dataLen = headerByte & 0x7F;
-          if (dataLen > 200 || dataLen === 0) {
-            log(`❌ 異常データ長(${dataLen})`);
-            resetReceiveState();
-            status.textContent = '🔄 リセット (異常ヘッダー)';
-            return;
-          }
-          const isFast = (rxMode === 'fast' || rxMode === 'turbo');
-          const isFastFromHeader = ((headerByte >> 7) & 1) === 1;
-          if (isFastFromHeader !== isFast) {
-            log(`⚠️ モード不一致 (ヘッダー:${isFastFromHeader?'高速':'正確'}, 受信:${isFast?'高速':'正確'})`);
-          }
-          const bitsPerDataByte = 14 * dataRepeat * (chordMode ? 2 : 1);
-          totalBits = bitsPerHeader + (dataLen * bitsPerDataByte);
-          headerDecoded = true;
-          headerDataLen = dataLen;
-          log(`ヘッダー復号: データ長=${dataLen}バイト, 総ビット数=${totalBits}`);
-          status.textContent = `📥 受信中... (${bitIndex}/${totalBits} ビット)`;
-        }
-
-        if (headerDecoded && bitStream.length >= totalBits && !receiveCompleted) {
-          receiveCompleted = true;
-          log(`受信完了 (${bitStream.length} ビット)`);
-          clearInterval(receiveLoopId); receiveLoopId = null;
-          clearInterval(spectrogramLoopId); spectrogramLoopId = null;
-          mediaStream.getTracks().forEach(t => t.stop());
-          mediaStream = null;
-          isReceiving = false;
-          document.getElementById('btnListen').disabled = false;
-          document.getElementById('btnCancel').disabled = true;
-          status.textContent = '✅ 受信完了';
-          status.style.color = '#28a745';
-
-          const validBits = bitStream.slice(0, totalBits);
-          decodeStream(validBits, chordMode, headerRepeat, dataRepeat);
-          return;
-        }
-      }
-    }
-  }, 2);
-  isReceiving = true;
-};
-
-// ---------- デコード ----------
-function decodeStream(bitStream, chordMode, headerRepeat, dataRepeat) {
-  const output = document.getElementById('outputText');
-  const bitsPerHeader = 14 * headerRepeat * (chordMode ? 2 : 1);
-  const bitsPerDataByte = 14 * dataRepeat * (chordMode ? 2 : 1);
-
-  if (bitStream.length < bitsPerHeader) {
-    log('❌ ビットストリーム短すぎ');
-    output.textContent = 'データ不足';
-    return;
-  }
-
-  const headerRaw = bitStream.slice(0, bitsPerHeader);
-  let headerBits14 = [];
-  if (chordMode) {
-    for (let i = 0; i < headerRaw.length; i += 2) headerBits14.push(headerRaw[i]);
-  } else {
-    headerBits14 = headerRaw;
-  }
-  let votedHeader = [];
-  for (let i = 0; i < 14 * headerRepeat; i += headerRepeat) {
-    let sum = 0;
-    for (let j = 0; j < headerRepeat; j++) sum += headerBits14[i+j] || 0;
-    votedHeader.push(sum >= headerRepeat/2 ? 1 : 0);
-  }
-  const headerByte = decode14BitsToByte(votedHeader);
-  const dataLen = headerByte & 0x7F;
-  log(`デコード: データ長=${dataLen}`);
-
-  let bytes = [];
-  let offset = bitsPerHeader;
-  for (let i = 0; i < dataLen; i++) {
-    if (offset + bitsPerDataByte > bitStream.length) break;
-    const raw = bitStream.slice(offset, offset + bitsPerDataByte);
-    let dataBits14 = [];
-    if (chordMode) {
-      for (let j = 0; j < raw.length; j += 2) dataBits14.push(raw[j]);
-    } else {
-      dataBits14 = raw;
-    }
-    let votedData = [];
-    for (let j = 0; j < 14 * dataRepeat; j += dataRepeat) {
-      let sum = 0;
-      for (let k = 0; k < dataRepeat; k++) sum += dataBits14[j+k] || 0;
-      votedData.push(sum >= dataRepeat/2 ? 1 : 0);
-    }
-    bytes.push(decode14BitsToByte(votedData));
-    offset += bitsPerDataByte;
-  }
-
-  const hexStr = bytes.map(b => b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
-  log(`受信バイト列: ${hexStr}`);
-  try {
-    const decoder = new TextDecoder('utf-8', { fatal: false });
-    const text = decoder.decode(new Uint8Array(bytes));
-    if (text.includes('\uFFFD')) log('⚠️ 置換文字(�)を含む');
-    log(`✅ 復元: "${text}"`);
-    output.textContent = text || "(空)";
-  } catch(e) {
-    log(`❌ デコードエラー: ${e.message}`);
-    output.textContent = "デコードエラー";
+    rxRunning = true;
+    document.getElementById('rxBtn').innerText = '⏹ マイク受信停止';
+    document.getElementById('rxBtn').className = 'btn btn-red';
+    renderSpecLoop();
+  } catch (err) {
+    alert('マイク起動エラー: ' + err.message);
   }
 }
 
-window.addEventListener('beforeunload', () => {
-  if (isReceiving) stopReceive(false);
-});
+function stopRx() {
+  if (rxStream) rxStream.getTracks().forEach(t => t.stop());
+  rxRunning = false;
+  document.getElementById('rxBtn').innerText = '🎤 マイク受信開始';
+  document.getElementById('rxBtn').className = 'btn btn-green';
+  document.getElementById('rxLed').className = 'led closed';
+  document.getElementById('rxStatus').innerText = 'STANDBY';
+}
+
+function renderSpecLoop() {
+  const canvas = document.getElementById('specCanvas');
+  const ctx2d = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx2d.scale(dpr, dpr);
+
+  const binCount = analyser.frequencyBinCount;
+  const freqData = new Uint8Array(binCount);
+
+  function getMagAt(f) {
+    const bin = Math.round(f / (audioCtx.sampleRate / analyser.fftSize));
+    let m = 0;
+    for (let i = Math.max(0, bin - 1); i <= Math.min(binCount - 1, bin + 1); i++) {
+      if (freqData[i] > m) m = freqData[i];
+    }
+    return m;
+  }
+
+  function loop() {
+    if (!rxRunning) return;
+    requestAnimationFrame(loop);
+
+    analyser.getByteFrequencyData(freqData);
+
+    const w = rect.width;
+    const h = rect.height;
+    const maxF = 2800;
+
+    ctx2d.fillStyle = '#03050a';
+    ctx2d.fillRect(0, 0, w, h);
+
+    ctx2d.strokeStyle = '#101a2c';
+    ctx2d.lineWidth = 1;
+    for (let f = 500; f < maxF; f += 500) {
+      const x = (f / maxF) * w;
+      ctx2d.beginPath(); ctx2d.moveTo(x, 0); ctx2d.lineTo(x, h); ctx2d.stroke();
+      ctx2d.fillStyle = '#2d4160';
+      ctx2d.font = '9px monospace';
+      ctx2d.fillText(f + 'Hz', x + 2, h - 4);
+    }
+
+    ctx2d.beginPath();
+    ctx2d.strokeStyle = '#00f0ff';
+    ctx2d.fillStyle = 'rgba(0, 240, 255, 0.12)';
+    ctx2d.lineWidth = 1.5;
+    ctx2d.moveTo(0, h);
+    for (let i = 0; i < binCount; i++) {
+      const f = i * (audioCtx.sampleRate / analyser.fftSize);
+      if (f > maxF) break;
+      const x = (f / maxF) * w;
+      const y = h - (freqData[i] / 255) * h;
+      ctx2d.lineTo(x, y);
+    }
+    ctx2d.lineTo(w, h);
+    ctx2d.fill();
+    ctx2d.stroke();
+
+    const sqY = h - (squelchLevel / 255) * h;
+    ctx2d.strokeStyle = '#ff3344';
+    ctx2d.setLineDash([4, 4]);
+    ctx2d.beginPath(); ctx2d.moveTo(0, sqY); ctx2d.lineTo(w, sqY); ctx2d.stroke();
+    ctx2d.setLineDash([]);
+    ctx2d.fillStyle = '#ff3344';
+    ctx2d.font = '10px monospace';
+    ctx2d.fillText(`SQUELCH: ${squelchLevel}`, 6, sqY - 4);
+
+    const magClkA = getMagAt(CLK_FREQS[0]);
+    const magClkB = getMagAt(CLK_FREQS[1]);
+    const maxClkMag = Math.max(magClkA, magClkB);
+    const clkDetected = (maxClkMag >= squelchLevel);
+    const activeClkIdx = (magClkA > magClkB) ? 0 : 1;
+
+    const bandResults = [];
+    for (let b = 0; b < 4; b++) {
+      let bestIdx = 0, maxM = 0;
+      for (let i = 0; i < 4; i++) {
+        const m = getMagAt(BANDS[b][i]);
+        if (m > maxM) { maxM = m; bestIdx = i; }
+      }
+      bandResults.push({ idx: bestIdx, mag: maxM });
+    }
+
+    CLK_FREQS.forEach((f, idx) => {
+      const x = (f / maxF) * w;
+      const isPeak = (clkDetected && activeClkIdx === idx);
+      ctx2d.strokeStyle = isPeak ? '#00f0ff' : 'rgba(0, 240, 255, 0.2)';
+      ctx2d.lineWidth = isPeak ? 2.5 : 1;
+      ctx2d.beginPath(); ctx2d.moveTo(x, 0); ctx2d.lineTo(x, h); ctx2d.stroke();
+    });
+
+    for (let b = 0; b < 4; b++) {
+      BANDS[b].forEach((f, idx) => {
+        const x = (f / maxF) * w;
+        const isPeak = (clkDetected && bandResults[b].idx === idx && bandResults[b].mag >= squelchLevel * 0.8);
+        ctx2d.strokeStyle = isPeak ? BAND_COLORS[b] : 'rgba(255, 255, 255, 0.12)';
+        ctx2d.lineWidth = isPeak ? 2 : 1;
+        ctx2d.beginPath(); ctx2d.moveTo(x, 0); ctx2d.lineTo(x, h); ctx2d.stroke();
+      });
+    }
+
+    const led = document.getElementById('rxLed');
+    const rxStatus = document.getElementById('rxStatus');
+
+    if (clkDetected) {
+      led.className = 'led open';
+      rxStatus.innerText = `SYNC LOCK [CLK ${activeClkIdx === 0 ? 'A (400Hz)' : 'B (500Hz)'}]`;
+      rxStatus.style.color = 'var(--green)';
+
+      document.getElementById('vuClkVal').innerText = activeClkIdx === 0 ? '400' : '500';
+      document.getElementById('vuB1Val').innerText = BANDS[0][bandResults[0].idx];
+      document.getElementById('vuB2Val').innerText = BANDS[1][bandResults[1].idx];
+      document.getElementById('vuB3Val').innerText = BANDS[2][bandResults[2].idx];
+      document.getElementById('vuB4Val').innerText = BANDS[3][bandResults[3].idx];
+
+      const now = performance.now();
+      if (lastClkState !== null && lastClkState !== activeClkIdx && (now - lastClkChangeTime > 25)) {
+        const b0_1 = bandResults[0].idx;
+        const b2_3 = bandResults[1].idx;
+        const b4_5 = bandResults[2].idx;
+        const b6_7 = bandResults[3].idx;
+        const decodedByte = (b6_7 << 6) | (b4_5 << 4) | (b2_3 << 2) | b0_1;
+
+        onByteReceived(decodedByte);
+        lastClkChangeTime = now;
+      }
+      lastClkState = activeClkIdx;
+    } else {
+      led.className = 'led closed';
+      rxStatus.innerText = 'SQUELCH CLOSED';
+      rxStatus.style.color = 'var(--muted)';
+      lastClkState = null;
+    }
+  }
+
+  loop();
+}
+
+function onByteReceived(b) {
+  receivedBytes.push(b);
+  const hexStr = receivedBytes.map(x => x.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+  document.getElementById('rxHex').innerText = hexStr;
+
+  try {
+    const text = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(receivedBytes));
+    document.getElementById('rxText').innerText = text;
+  } catch (e) {
+    console.warn(e);
+  }
+}
 </script>
 </body>
 </html>
