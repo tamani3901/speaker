@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Turbo Multi-Carrier Acoustic Modem + Image TX</title>
+  <title>Turbo Multi-Carrier Modem + Pre-rendered Image TX</title>
   <style>
     :root {
       --bg: #080c14;
@@ -189,16 +189,6 @@
       color: var(--cyan);
     }
 
-    .spec-legend {
-      display: flex;
-      gap: 8px;
-      font-size: 0.7rem;
-      color: var(--muted);
-      margin-top: 4px;
-      flex-wrap: wrap;
-    }
-    .legend-dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
-    
     .tab-btn {
       padding: 4px 10px;
       font-size: 0.75rem;
@@ -216,7 +206,7 @@
 <div class="app">
   <header>
     <h1>TURBO MULTI-CARRIER MODEM</h1>
-    <p>5波同時合成（パラレル4-FSK＋同期クロック）＋画像送信機能 (Max 3MB)</p>
+    <p>5波同時合成（パラレル4-FSK＋同期クロック）＋画像事前レンダリング送信 (Max 3MB)</p>
   </header>
 
   <div class="grid">
@@ -231,7 +221,7 @@
 
       <div id="textModeGroup">
         <label style="font-size:0.75rem; color:var(--muted);">送信テキスト:</label>
-        <textarea id="txInput" rows="4">こんにちは！同期強化版の送信テストです。最初の文字欠けを修正しました。</textarea>
+        <textarea id="txInput" rows="4">テスト送信です。先頭欠けとレンダリング負荷を完全修正しました。</textarea>
       </div>
 
       <div id="imgModeGroup" style="display:none;">
@@ -252,15 +242,15 @@
       </div>
 
       <div class="row" style="margin-top:12px;">
-        <button id="sendBtn" class="btn btn-cyan">▶ 送信開始 (プリアンブル付)</button>
+        <button id="sendBtn" class="btn btn-cyan">▶ 事前合成 & 送信開始</button>
         <button id="stopBtn" class="btn btn-red" disabled>■ 中断</button>
         <span id="txStats" class="stats-badge" style="display:none;">READY</span>
       </div>
 
       <div style="margin-top:14px; border-top:1px dashed var(--border); padding-top:10px;">
-        <div style="font-size:0.75rem; color:var(--muted); margin-bottom:4px;">頭欠け対策:</div>
+        <div style="font-size:0.75rem; color:var(--muted); margin-bottom:4px;">改修ポイント:</div>
         <p style="font-size:0.72rem; color:var(--muted); line-height:1.4;">
-          送信前に500msの同期トーン＋ダミーシンボルを出力し、受信マイクのゲイン（AGC）とFFT同期を事前にロックさせてから本データを送信します。
+          送信ボタンを押すと、一旦バックグラウンド（OfflineAudioContext）で全音波をバッファ化してから再生します。これにより大容量データでもぷつぷつ切れなくなります。
         </p>
       </div>
     </div>
@@ -280,15 +270,6 @@
 
       <div class="spec-wrap">
         <canvas id="specCanvas"></canvas>
-      </div>
-
-      <div class="spec-legend">
-        <div><span class="legend-dot" style="background:#00f0ff;"></span> CLK</div>
-        <div><span class="legend-dot" style="background:#00ff66;"></span> B1</div>
-        <div><span class="legend-dot" style="background:#ffd700;"></span> B2</div>
-        <div><span class="legend-dot" style="background:#ff8800;"></span> B3</div>
-        <div><span class="legend-dot" style="background:#ff007f;"></span> B4</div>
-        <div><span class="legend-dot" style="background:var(--red);"></span> スケルチ線</div>
       </div>
 
       <div class="vu-grid">
@@ -357,7 +338,7 @@ tabImg.onclick = () => {
   imgModeGroup.style.display = 'block';
 };
 
-// 画像選択処理（最大3MB制限）
+// 画像選択
 let preparedImgDataUrl = null;
 document.getElementById('imgInput').addEventListener('change', (e) => {
   const file = e.target.files[0];
@@ -382,10 +363,10 @@ document.getElementById('imgInput').addEventListener('change', (e) => {
   reader.readAsDataURL(file);
 });
 
-let txAbort = false;
+let currentSourceNode = null;
 
-async function transmit() {
-  const ctx = getCtx();
+// 事前オーディオ合成＋送信処理 (OfflineAudioContext)
+async function generateAndTransmit() {
   const speed = document.getElementById('speedSel').value;
   let slotMs = 50;
   if (speed === 'turbo') slotMs = 35;
@@ -406,32 +387,38 @@ async function transmit() {
   if (!payload) return;
 
   const bytes = new TextEncoder().encode(payload);
-  txAbort = false;
-
-  document.getElementById('sendBtn').disabled = true;
-  document.getElementById('stopBtn').disabled = false;
+  const sendBtn = document.getElementById('sendBtn');
+  const stopBtn = document.getElementById('stopBtn');
   const stats = document.getElementById('txStats');
+
+  sendBtn.disabled = true;
   stats.style.display = 'inline-flex';
+  stats.innerText = 'RENDERING...';
 
-  const startTime = ctx.currentTime + 0.05;
-  let t = startTime;
+  // 1. 全体の時間を計算
+  const preambleTime = 0.6; // 600ms のプリアンブル（2文字落ち対策）
   const duration = slotMs / 1000;
+  const totalTime = preambleTime + bytes.length * duration + 0.2;
 
-  // --- 【修正】最初の2文字抜け対策：プリアンブル（同期確立音）の強化 ---
-  // 1. 長めのパイロット信号 (500ms) でマイクのAGCとフィルタを安定化させる
-  playToneBundle(ctx, 400, [700, 1200, 1700, 2200], t, 0.5);
-  t += 0.52;
+  const sampleRate = 44100;
+  const offlineCtx = new OfflineAudioContext(1, Math.ceil(sampleRate * totalTime), sampleRate);
 
-  // 2. ダミーの同期切り替えトグル (2回) で確実にクロック同期の初期化を完了させる
-  playToneBundle(ctx, 500, [700, 1200, 1700, 2200], t, duration);
+  // 2. オフラインレンダリングで波形を事前生成
+  let t = 0.05;
+
+  // --- 2文字落ち対策: 明確な同期アライメント音 ---
+  // A. マイクAGC調整音 (300ms)
+  addToneBundleToOffline(offlineCtx, 400, [700, 1200, 1700, 2200], t, 0.3);
+  t += 0.32;
+
+  // B. 初期のクロック状態を確実に受信側に設定させるトリガー音 (500Hz -> 400Hz)
+  addToneBundleToOffline(offlineCtx, 500, [700, 1200, 1700, 2200], t, duration);
   t += duration;
-  playToneBundle(ctx, 400, [700, 1200, 1700, 2200], t, duration);
+  addToneBundleToOffline(offlineCtx, 400, [700, 1200, 1700, 2200], t, duration);
   t += duration;
 
-  // --- 本データ送信 ---
+  // C. 本データの変調波形レンダリング
   for (let i = 0; i < bytes.length; i++) {
-    if (txAbort) break;
-
     const b = bytes[i];
     const clkFreq = (i % 2 === 0) ? CLK_FREQS[0] : CLK_FREQS[1];
 
@@ -440,29 +427,38 @@ async function transmit() {
     const f3 = BANDS[2][(b >> 4) & 0x03];
     const f4 = BANDS[3][(b >> 6) & 0x03];
 
-    playToneBundle(ctx, clkFreq, [f1, f2, f3, f4], t, duration);
+    addToneBundleToOffline(offlineCtx, clkFreq, [f1, f2, f3, f4], t, duration);
     t += duration;
-
-    if (i % 10 === 0 || i === bytes.length - 1) {
-      stats.innerText = `SEND: ${i + 1}/${bytes.length} Bytes`;
-    }
   }
 
-  const waitMs = (t - ctx.currentTime) * 1000;
-  await new Promise(r => setTimeout(r, Math.max(10, waitMs)));
+  // レンダリング実行
+  const renderedBuffer = await offlineCtx.startRendering();
 
-  document.getElementById('sendBtn').disabled = false;
-  document.getElementById('stopBtn').disabled = true;
-  stats.innerText = 'COMPLETE';
+  // 3. リアルタイム再生
+  const realCtx = getCtx();
+  currentSourceNode = realCtx.createBufferSource();
+  currentSourceNode.buffer = renderedBuffer;
+  currentSourceNode.connect(realCtx.destination);
+
+  stopBtn.disabled = false;
+  stats.innerText = `PLAYING (${bytes.length} Bytes)`;
+
+  currentSourceNode.onended = () => {
+    sendBtn.disabled = false;
+    stopBtn.disabled = true;
+    stats.innerText = 'COMPLETE';
+  };
+
+  currentSourceNode.start();
 }
 
-function playToneBundle(ctx, clkFreq, dataFreqs, startTime, duration) {
+function addToneBundleToOffline(ctx, clkFreq, dataFreqs, startTime, duration) {
   const allFreqs = [clkFreq, ...dataFreqs];
   const masterGain = ctx.createGain();
 
   masterGain.gain.setValueAtTime(0.0001, startTime);
-  masterGain.gain.linearRampToValueAtTime(0.18, startTime + 0.004);
-  masterGain.gain.setValueAtTime(0.18, startTime + duration - 0.004);
+  masterGain.gain.linearRampToValueAtTime(0.18, startTime + 0.003);
+  masterGain.gain.setValueAtTime(0.18, startTime + duration - 0.003);
   masterGain.gain.linearRampToValueAtTime(0.0001, startTime + duration);
   masterGain.connect(ctx.destination);
 
@@ -476,8 +472,15 @@ function playToneBundle(ctx, clkFreq, dataFreqs, startTime, duration) {
   });
 }
 
-document.getElementById('sendBtn').addEventListener('click', transmit);
-document.getElementById('stopBtn').addEventListener('click', () => { txAbort = true; });
+document.getElementById('sendBtn').addEventListener('click', generateAndTransmit);
+document.getElementById('stopBtn').addEventListener('click', () => {
+  if (currentSourceNode) {
+    currentSourceNode.stop();
+    document.getElementById('sendBtn').disabled = false;
+    document.getElementById('stopBtn').disabled = true;
+    document.getElementById('txStats').innerText = 'STOPPED';
+  }
+});
 
 // RX 受信処理
 let rxRunning = false;
@@ -498,6 +501,7 @@ sqSlider.addEventListener('input', (e) => {
 
 document.getElementById('clearBtn').addEventListener('click', () => {
   receivedBytes = [];
+  lastClkState = null;
   document.getElementById('rxHex').innerText = '---';
   document.getElementById('rxText').innerText = '';
   const imgRes = document.getElementById('rxImgResult');
@@ -605,9 +609,6 @@ function renderSpecLoop() {
     ctx2d.setLineDash([4, 4]);
     ctx2d.beginPath(); ctx2d.moveTo(0, sqY); ctx2d.lineTo(w, sqY); ctx2d.stroke();
     ctx2d.setLineDash([]);
-    ctx2d.fillStyle = '#ff3344';
-    ctx2d.font = '10px monospace';
-    ctx2d.fillText(`SQUELCH: ${squelchLevel}`, 6, sqY - 4);
 
     const magClkA = getMagAt(CLK_FREQS[0]);
     const magClkB = getMagAt(CLK_FREQS[1]);
@@ -658,7 +659,7 @@ function renderSpecLoop() {
       document.getElementById('vuB4Val').innerText = BANDS[3][bandResults[3].idx];
 
       const now = performance.now();
-      if (lastClkState !== null && lastClkState !== activeClkIdx && (now - lastClkChangeTime > 20)) {
+      if (lastClkState !== null && lastClkState !== activeClkIdx && (now - lastClkChangeTime > 18)) {
         const b0_1 = bandResults[0].idx;
         const b2_3 = bandResults[1].idx;
         const b4_5 = bandResults[2].idx;
@@ -687,8 +688,6 @@ function onByteReceived(b) {
 
   try {
     const decodedStr = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(receivedBytes));
-    
-    // DataURL(画像) の判定
     if (decodedStr.startsWith('data:image/')) {
       document.getElementById('rxText').innerText = '[画像データ受信中 / 完了]';
       const imgRes = document.getElementById('rxImgResult');
