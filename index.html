@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Full-Featured Multi-Carrier Acoustic Modem</title>
+  <title>ULTIMATE ACOUSTIC MODEM & IMAGE TRANSMITTER</title>
   <style>
     :root {
       --bg: #030509;
@@ -13,6 +13,7 @@
       --green: #00ff77;
       --yellow: #ffd000;
       --orange: #ff7700;
+      --pink: #ff007f;
       --red: #ff3344;
       --text: #e2e8f0;
       --muted: #5e7292;
@@ -22,40 +23,92 @@
     body { background: var(--bg); color: var(--text); padding: 12px; display: flex; justify-content: center; }
     .app { width: 100%; max-width: 1280px; display: flex; flex-direction: column; gap: 10px; }
 
-    header { text-align: center; border-bottom: 2px solid var(--border); padding-bottom: 8px; }
-    header h1 { font-size: 1.45rem; color: var(--cyan); letter-spacing: 2px; text-shadow: 0 0 14px rgba(0, 240, 255, 0.4); }
-    header p { color: var(--muted); font-size: 0.76rem; margin-top: 2px; }
+    header {
+      text-align: center;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 8px;
+    }
+    header h1 {
+      font-size: 1.5rem;
+      color: var(--cyan);
+      letter-spacing: 2px;
+      text-shadow: 0 0 14px rgba(0, 240, 255, 0.4);
+    }
+    header p { color: var(--muted); font-size: 0.78rem; margin-top: 2px; }
 
-    .grid { display: grid; grid-template-columns: 1fr 1.35fr; gap: 10px; }
+    .grid { display: grid; grid-template-columns: 1fr 1.25fr; gap: 10px; }
     @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
 
-    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); }
-    .card-title { font-size: 0.9rem; font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; border-left: 4px solid var(--cyan); padding-left: 6px; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+    }
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: bold;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-left: 4px solid var(--cyan);
+      padding-left: 6px;
+    }
     .card-title.rx { border-left-color: var(--green); }
 
-    textarea { width: 100%; background: #020408; border: 1px solid #1c2a44; color: var(--cyan); padding: 8px; border-radius: 4px; font-size: 0.85rem; resize: vertical; }
+    .tab-group { display: flex; gap: 4px; margin-bottom: 8px; }
+    .tab-btn {
+      background: #0f172a; border: 1px solid var(--border); color: var(--muted);
+      padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem;
+    }
+    .tab-btn.active { background: #005a73; color: #fff; border-color: var(--cyan); }
 
-    .btn { background: #141c2e; color: var(--text); border: 1px solid #293854; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.78rem; transition: all 0.2s; }
+    textarea, input[type="file"] {
+      width: 100%;
+      background: #020408;
+      border: 1px solid #1c2a44;
+      color: var(--cyan);
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+    textarea { resize: vertical; }
+
+    .btn {
+      background: #141c2e; color: var(--text); border: 1px solid #293854;
+      padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.78rem; transition: all 0.2s;
+    }
     .btn:hover { background: #23314d; }
     .btn-cyan { background: #005a73; border-color: var(--cyan); color: #fff; }
     .btn-cyan:hover { background: #007e9e; box-shadow: 0 0 10px rgba(0,240,255,0.4); }
     .btn-green { background: #005229; border-color: var(--green); color: #fff; }
     .btn-green:hover { background: #00783c; box-shadow: 0 0 10px rgba(0,255,119,0.4); }
     .btn-red { background: #6e101d; border-color: var(--red); color: #fff; }
+    .btn-auto { background: #4a3800; border-color: var(--yellow); color: #fff; }
     .btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
     .row { display: flex; gap: 8px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
-    select, input[type="file"] { background: #020408; color: #fff; border: 1px solid #1c2a44; padding: 5px 8px; border-radius: 4px; font-size: 0.78rem; }
+    select {
+      background: #020408; color: #fff; border: 1px solid #1c2a44; padding: 5px 8px; border-radius: 4px; font-size: 0.78rem;
+    }
 
-    .spec-wrap { position: relative; background: #010205; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-top: 6px; }
-    canvas { display: block; width: 100%; height: 180px; }
+    .spec-wrap {
+      position: relative; background: #010205; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-top: 6px;
+    }
+    canvas { display: block; width: 100%; height: 200px; }
 
-    .matrix-wrap { margin-top: 6px; background: #020308; padding: 6px; border-radius: 4px; border: 1px solid var(--border); }
-    .matrix-grid { display: grid; gap: 2px; max-height: 85px; overflow-y: auto; }
-    .matrix-cell { text-align: center; border: 1px solid #101828; padding: 2px 0; border-radius: 2px; font-size: 0.58rem; background: #040710; }
-    .matrix-val { font-size: 0.68rem; font-weight: bold; color: #fff; }
+    .progress-bar {
+      width: 100%; height: 6px; background: #0a1120; border-radius: 3px; overflow: hidden; margin-top: 6px; display: none;
+    }
+    .progress-fill { width: 0%; height: 100%; background: var(--cyan); transition: width 0.1s; }
 
-    .ctrl-box { margin-top: 6px; background: #040710; padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border); display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .ctrl-box {
+      margin-top: 6px; background: #040710; padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border);
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+    }
+    @media(max-width: 750px) { .ctrl-box { grid-template-columns: 1fr; } }
     .ctrl-item { display: flex; flex-direction: column; gap: 2px; }
     .ctrl-hdr { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--muted); }
     input[type="range"] { width: 100%; accent-color: var(--yellow); cursor: pointer; }
@@ -64,75 +117,77 @@
     .led.open { background: var(--green); box-shadow: 0 0 6px var(--green); }
     .led.closed { background: var(--red); }
 
-    .out-box { background: #010205; border: 1px solid #141c2c; padding: 6px 8px; min-height: 42px; max-height: 90px; overflow-y: auto; border-radius: 4px; word-break: break-all; font-size: 0.85rem; margin-top: 4px; }
+    .out-box {
+      background: #010205; border: 1px solid #141c2c; padding: 6px 8px; min-height: 42px; max-height: 120px;
+      overflow-y: auto; border-radius: 4px; word-break: break-all; font-size: 0.85rem; margin-top: 4px;
+    }
     .out-text { color: var(--green); }
     .out-hex { color: var(--muted); font-size: 0.7rem; }
 
+    .img-preview { max-width: 100%; max-height: 150px; border-radius: 4px; border: 1px solid var(--border); margin-top: 4px; display: none; }
     .badge { font-size: 0.7rem; background: #0e1626; padding: 2px 6px; border-radius: 3px; color: var(--cyan); }
-    .polyphony-info { font-size: 0.72rem; color: var(--yellow); font-weight: bold; margin-top: 4px; }
-
-    .tab-btn { padding: 4px 10px; font-size: 0.75rem; background: #162032; border: 1px solid var(--border); color: var(--text); cursor: pointer; border-radius: 4px 4px 0 0; }
-    .tab-btn.active { background: var(--cyan); color: #000; font-weight: bold; }
-    .img-preview { max-width: 100%; max-height: 150px; margin-top: 6px; border-radius: 4px; border: 1px solid var(--border); display: none; }
-    progress { width: 100%; height: 6px; margin-top: 6px; accent-color: var(--cyan); }
   </style>
 </head>
 <body>
 
 <div class="app">
   <header>
-    <h1>ULTIMATE ACOUSTIC MODEM (FIXED DSP)</h1>
-    <p>FFT Bin完全同期 × 高精度サンプリング × 画像・テキスト多重音波通信</p>
+    <h1>ULTIMATE ACOUSTIC MODEM & IMAGE TRANSMITTER</h1>
+    <p>多重音階・マルチキャリア音響通信 ＆ 画像パケット転送（最大3MB対応）</p>
   </header>
 
   <div class="grid">
     <!-- TX 送信側 -->
     <div class="card">
-      <div class="card-title">📡 超多重和音 送信機 (TX)</div>
-      
-      <div style="display:flex; gap:4px; margin-bottom:8px;">
-        <button id="tabText" class="tab-btn active">テキスト送信</button>
-        <button id="tabImg" class="tab-btn">画像送信</button>
+      <div class="card-title">📡 音響データ送信機 (TX)</div>
+
+      <div class="tab-group">
+        <button id="tabTextBtn" class="tab-btn active">📝 テキスト送信</button>
+        <button id="tabImgBtn" class="tab-btn">🖼️ 画像送信 (最大3MB)</button>
       </div>
 
-      <div id="textModeGroup">
-        <textarea id="txInput" rows="3">Bin同期で完全に通信成功！</textarea>
+      <!-- テキスト入力エリア -->
+      <div id="textInputArea">
+        <textarea id="txInput" rows="3">こんにちは！音響モデム通信テスト。画像ファイル（3MBまで）も自動最適化して音で送信できます。</textarea>
       </div>
 
-      <div id="imgModeGroup" style="display:none;">
-        <input type="file" id="imgInput" accept="image/*" style="width:100%;">
+      <!-- 画像選択エリア -->
+      <div id="imgInputArea" style="display:none;">
+        <input type="file" id="imgFileInput" accept="image/*">
+        <div class="row">
+          <label style="font-size:0.72rem; color:var(--muted);">画像最適化:</label>
+          <select id="imgCompressSel">
+            <option value="64">超高速 (64px アイコンサイズ / 数百B)</option>
+            <option value="120" selected>標準 (120px 低画質 / 約1~2KB)</option>
+            <option value="200">高画質 (200px / 約3~5KB)</option>
+            <option value="raw">原寸そのまま (※転送に長時間を要します)</option>
+          </select>
+        </div>
         <img id="txImgPreview" class="img-preview">
-        <div id="imgSizeWarn" style="font-size:0.72rem; color:var(--yellow); margin-top:4px;"></div>
       </div>
-
-      <div class="row" style="margin-top:8px;">
-        <label style="font-size:0.75rem; color:var(--muted);">キャリア数 (多重度):</label>
-        <select id="polyphonySel">
-          <option value="4">5波 (4 Band / 1B/和音)</option>
-          <option value="8">9波 (8 Band / 2B/和音)</option>
-          <option value="16" selected>17波 (16 Band / 4B/和音) 【安定推奨】</option>
-          <option value="24">25波 (24 Band / 6B/和音)</option>
-          <option value="32">33波 (32 Band / 8B/和音)</option>
-          <option value="64">65波 (64 Band / 16B/和音) 【爆速・近距離】</option>
-        </select>
-      </div>
-
-      <div id="polyphonyInfo" class="polyphony-info">現在: 17音 同時発音</div>
 
       <div class="row">
-        <label style="font-size:0.75rem; color:var(--muted);">1和音の長さ (シンボル長):</label>
-        <select id="durationSel">
-          <option value="200">200ms (長距離・反響に超強)</option>
-          <option value="150" selected>150ms (標準・高信頼)</option>
-          <option value="100">100ms (高速)</option>
-          <option value="60">60ms (爆速限界挑戦)</option>
+        <label style="font-size:0.75rem; color:var(--muted);">通信方式 / モード:</label>
+        <select id="modemModeSel">
+          <option value="65tone" selected>🚀 Extreme 65-Tone (超高密度・最速)</option>
+          <option value="5tone">⚡ Turbo 5-Tone (標準マルチキャリア)</option>
+          <option value="1tone">🛡️ Single Tone (単音/ハミング符号強固)</option>
         </select>
       </div>
 
-      <progress id="txProgress" value="0" max="100" style="display:none;"></progress>
+      <div class="row" id="polyphonyRow">
+        <label style="font-size:0.75rem; color:var(--muted);">多重度 (65-Tone時):</label>
+        <select id="polyphonySel">
+          <option value="16">16バンド (4B/和音)</option>
+          <option value="32" selected>32バンド (8B/和音・推奨)</option>
+          <option value="64">64バンド (16B/和音・最高速)</option>
+        </select>
+      </div>
+
+      <div class="progress-bar" id="txProgressBar"><div class="progress-fill" id="txProgressFill"></div></div>
 
       <div class="row" style="margin-top:10px;">
-        <button id="sendBtn" class="btn btn-cyan">▶ 送信開始 (音声バースト)</button>
+        <button id="sendBtn" class="btn btn-cyan">▶ 送信開始</button>
         <button id="stopBtn" class="btn btn-red" disabled>■ 停止</button>
         <span id="txStatus" class="badge">READY</span>
       </div>
@@ -140,284 +195,304 @@
 
     <!-- RX 受信側 -->
     <div class="card">
-      <div class="card-title rx">👂 Bin同期 デコーダー & スペアナ (RX)</div>
+      <div class="card-title rx">👂 リアルタイム・アナライザー & デコーダー (RX)</div>
 
       <div class="row">
         <button id="rxBtn" class="btn btn-green">🎤 受信開始</button>
+        <button id="autoSqBtn" class="btn btn-auto">⚡ 自動スケルチ</button>
         <button id="clearBtn" class="btn">クリア</button>
+        <select id="vizModeSel">
+          <option value="spectrum">波形スペクトラム</option>
+          <option value="spectrogram">スペクトログラム</option>
+        </select>
         <div style="display:inline-flex; align-items:center; gap:5px; margin-left:auto;">
           <div id="rxLed" class="led closed"></div>
           <span id="rxStatus" style="font-size:0.72rem; color:var(--muted);">STANDBY</span>
         </div>
       </div>
 
-      <!-- スペアナCanvas -->
+      <!-- 描画エリア -->
       <div class="spec-wrap">
         <canvas id="specCanvas"></canvas>
       </div>
 
-      <!-- リアルタイム・マトリクスモニター -->
-      <div class="matrix-wrap">
-        <div class="matrix-grid" id="matrixGrid"></div>
-      </div>
-
-      <!-- 調整コントロール -->
+      <!-- コントロール -->
       <div class="ctrl-box">
         <div class="ctrl-item">
-          <div class="ctrl-hdr">
-            <span>スケルチ (Squelch):</span>
-            <span id="sqVal" style="color:var(--yellow); font-weight:bold;">-60 dB</span>
-          </div>
-          <input type="range" id="sqSlider" min="-80" max="-30" value="-60">
+          <div class="ctrl-hdr"><span>低音カット (HPF):</span><span id="hpfVal" style="color:var(--cyan); font-weight:bold;">400 Hz</span></div>
+          <input type="range" id="hpfSlider" min="50" max="800" value="400">
         </div>
         <div class="ctrl-item">
-          <div class="ctrl-hdr">
-            <span>サンプリング位置:</span>
-            <span id="delayVal" style="color:var(--orange); font-weight:bold;">45%</span>
-          </div>
+          <div class="ctrl-hdr"><span>スケルチ (Squelch):</span><span id="sqVal" style="color:var(--yellow); font-weight:bold;">40</span></div>
+          <input type="range" id="sqSlider" min="10" max="180" value="40">
+        </div>
+        <div class="ctrl-item">
+          <div class="ctrl-hdr"><span>サンプリング位置:</span><span id="delayVal" style="color:var(--orange); font-weight:bold;">45%</span></div>
           <input type="range" id="delaySlider" min="20" max="70" value="45">
         </div>
       </div>
 
-      <label style="font-size:0.72rem; color:var(--muted); margin-top:4px; display:block;">受信生データ (HEX):</label>
+      <label style="font-size:0.72rem; color:var(--muted); margin-top:6px; display:block;">受信データ (HEX):</label>
       <div id="rxHex" class="out-box out-hex">---</div>
 
-      <label style="font-size:0.72rem; color:var(--muted); margin-top:3px; display:block;">復号結果:</label>
+      <label style="font-size:0.72rem; color:var(--muted); margin-top:4px; display:block;">復号テキスト / 受信ステータス:</label>
       <div id="rxText" class="out-box out-text"></div>
-      <img id="rxImgResult" class="img-preview">
+
+      <label style="font-size:0.72rem; color:var(--muted); margin-top:4px; display:block;">受信画像出力:</label>
+      <div style="text-align:center; background:#010205; border:1px solid #141c2c; padding:6px; border-radius:4px; margin-top:2px;">
+        <img id="rxImgOutput" class="img-preview" style="margin:0 auto;">
+        <div id="rxImgStatus" style="font-size:0.72rem; color:var(--muted);">画像未受信</div>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
-// --- DSP & 周波数構造定義 (Bin完全同期) ---
-const FFT_SIZE = 4096;
-const SAMPLE_RATE = 44100;
-const BIN_WIDTH = SAMPLE_RATE / FFT_SIZE; // ≈ 10.766 Hz
-
-// Binに直結する正確な周波数を生成
-function binToFreq(bin) { return bin * BIN_WIDTH; }
-
-// 同期用音波 (プリアンブル Bin)
-const SYNC_BIN_1 = 80;  // ≈ 861 Hz
-const SYNC_BIN_2 = 120; // ≈ 1292 Hz
-
-// 動的にBinと重ならないキャリアグループを割り当てる関数
-function generateBinSynchronizedBands(bandCount) {
-  const bands = [];
-  let startBin = 160; // ≈ 1722 Hz からスタート
-  const stepBin = 3;   // 各シンボル間は3Bin離す
-  const gapBin = 4;    // バンド間は4Bin離して混信を防止
-
-  for (let b = 0; b < bandCount; b++) {
-    bands.push([
-      binToFreq(startBin),
-      binToFreq(startBin + stepBin),
-      binToFreq(startBin + stepBin * 2),
-      binToFreq(startBin + stepBin * 3)
-    ]);
-    startBin += stepBin * 3 + gapBin;
-  }
-  return bands;
-}
-
-const PALETTE = [
-  '#00ff77', '#00f0ff', '#0099ff', '#aa44ff', '#ff007f', '#ff5500',
-  '#ffaa00', '#ffd000', '#77ff00', '#00ffcc', '#3388ff', '#d944ff'
-];
-
-function getActiveBands() {
-  const count = parseInt(document.getElementById('polyphonySel').value);
-  return generateBinSynchronizedBands(count);
-}
+/**
+ * -------------------------------------------------------------
+ * 定数・周波数テーブル・Web Audio定義
+ * -------------------------------------------------------------
+ */
+const CLK_FREQS = [650, 770];
+const HEADER_MAGIC = [0xAA, 0x55]; // パケット開始マジックナンバー
+const TYPE_TEXT = 0x01;
+const TYPE_IMAGE = 0x02;
 
 let audioCtx = null;
 function getCtx() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE });
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   if (audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
 }
 
-// モード切り替え & 画像ロード
-let sendMode = 'text';
-const tabText = document.getElementById('tabText');
-const tabImg = document.getElementById('tabImg');
-const textModeGroup = document.getElementById('textModeGroup');
-const imgModeGroup = document.getElementById('imgModeGroup');
+// 65-Tone用周波数バンド動的生成
+function generateBands(count) {
+  const bands = [];
+  let base = 900;
+  for (let b = 0; b < count; b++) {
+    bands.push([base, base + 40, base + 80, base + 120]);
+    base += 165;
+  }
+  return bands;
+}
 
-tabText.onclick = () => {
-  sendMode = 'text';
-  tabText.classList.add('active'); tabImg.classList.remove('active');
-  textModeGroup.style.display = 'block'; imgModeGroup.style.display = 'none';
-};
+const PALETTE = ['#00ff77', '#00f0ff', '#0099ff', '#aa44ff', '#ff007f', '#ffaa00', '#ffd000'];
 
-tabImg.onclick = () => {
-  sendMode = 'image';
-  tabImg.classList.add('active'); tabText.classList.remove('active');
-  textModeGroup.style.display = 'none'; imgModeGroup.style.display = 'block';
-};
+// UIタブ切り替え
+let activeTab = 'text';
+document.getElementById('tabTextBtn').addEventListener('click', () => {
+  activeTab = 'text';
+  document.getElementById('tabTextBtn').className = 'tab-btn active';
+  document.getElementById('tabImgBtn').className = 'tab-btn';
+  document.getElementById('textInputArea').style.display = 'block';
+  document.getElementById('imgInputArea').style.display = 'none';
+});
+document.getElementById('tabImgBtn').addEventListener('click', () => {
+  activeTab = 'image';
+  document.getElementById('tabImgBtn').className = 'tab-btn active';
+  document.getElementById('tabTextBtn').className = 'tab-btn';
+  document.getElementById('textInputArea').style.display = 'none';
+  document.getElementById('imgInputArea').style.display = 'block';
+});
 
-let preparedImgDataUrl = null;
-document.getElementById('imgInput').addEventListener('change', (e) => {
+// 画像ファイル選択＆圧縮処理 (3MB制限チェック)
+let txImageBytes = null;
+document.getElementById('imgFileInput').addEventListener('change', async (e) => {
   const file = e.target.files[0];
-  const warn = document.getElementById('imgSizeWarn');
-  const preview = document.getElementById('txImgPreview');
   if (!file) return;
-  warn.innerText = `サイズ: ${(file.size / 1024).toFixed(1)} KB`;
+
+  if (file.size > 3 * 1024 * 1024) {
+    alert('ファイルサイズが大きすぎます。3MB以下の画像を選択してください。');
+    e.target.value = '';
+    return;
+  }
+
+  const imgEl = document.getElementById('txImgPreview');
   const reader = new FileReader();
   reader.onload = (evt) => {
-    preparedImgDataUrl = evt.target.result;
-    preview.src = preparedImgDataUrl;
-    preview.style.display = 'block';
+    imgEl.src = evt.target.result;
+    imgEl.style.display = 'block';
+    processImageForTx();
   };
   reader.readAsDataURL(file);
 });
 
-function updateMeterUI() {
-  const bands = getActiveBands();
-  const count = bands.length;
-  const bytesPerChord = Math.max(1, Math.floor(count / 4));
-  
-  document.getElementById('polyphonyInfo').innerText = 
-    `現在: ${count}バンド (${bytesPerChord}バイト/150ms 転送)`;
+document.getElementById('imgCompressSel').addEventListener('change', processImageForTx);
 
-  const grid = document.getElementById('matrixGrid');
-  grid.innerHTML = '';
-  grid.style.gridTemplateColumns = `repeat(${Math.min(count, 16)}, 1fr)`;
+function processImageForTx() {
+  const imgEl = document.getElementById('txImgPreview');
+  if (!imgEl.src) return;
 
-  bands.forEach((_, i) => {
-    const col = PALETTE[i % PALETTE.length];
-    grid.innerHTML += `
-      <div class="matrix-cell" style="border-color:${col}33;">
-        <span style="color:${col}">B${i}</span>
-        <div class="matrix-val" id="v${i}">--</div>
-      </div>`;
-  });
-}
-document.getElementById('polyphonySel').addEventListener('change', updateMeterUI);
-updateMeterUI();
-
-// --- 送信ロジック (Offline Context) ---
-let currentSourceNode = null;
-
-async function transmit() {
-  let payload = sendMode === 'text' ? document.getElementById('txInput').value : preparedImgDataUrl;
-  if (!payload) { alert('送信データがありません'); return; }
-
-  const bands = getActiveBands();
-  const bandCount = bands.length;
-  const bytesPerChord = Math.max(1, Math.floor(bandCount / 4));
-  const chordMs = parseInt(document.getElementById('durationSel').value);
-  const duration = chordMs / 1000;
-
-  const rawBytes = Array.from(new TextEncoder().encode(payload));
-  const sendBtn = document.getElementById('sendBtn');
-  const stopBtn = document.getElementById('stopBtn');
-  const statusEl = document.getElementById('txStatus');
-  const progress = document.getElementById('txProgress');
-
-  sendBtn.disabled = true; stopBtn.disabled = false;
-  progress.style.display = 'block'; progress.value = 0;
-  statusEl.innerText = `波形生成中... (${rawBytes.length}B)`;
-
-  const totalChords = Math.ceil(rawBytes.length / bytesPerChord);
-  const totalTime = 0.5 + (totalChords * duration) + 0.2;
-
-  const offCtx = new OfflineAudioContext(1, Math.ceil(SAMPLE_RATE * totalTime), SAMPLE_RATE);
-  let t = 0.05;
-
-  // プリアンブル (高精度の2段階同期音)
-  playTone(offCtx, binToFreq(SYNC_BIN_1), t, 0.15);
-  t += 0.15;
-  playTone(offCtx, binToFreq(SYNC_BIN_2), t, 0.15);
-  t += 0.20;
-
-  // 各データシンボルの生成
-  for (let i = 0; i < totalChords; i++) {
-    const chunk = rawBytes.slice(i * bytesPerChord, (i + 1) * bytesPerChord);
-    while (chunk.length < bytesPerChord) chunk.push(0x00);
-
-    const activeFreqs = [];
-    for (let b = 0; b < bytesPerChord; b++) {
-      const val = chunk[b];
-      activeFreqs.push(bands[b * 4 + 0][val & 0x03]);
-      activeFreqs.push(bands[b * 4 + 1][(val >> 2) & 0x03]);
-      activeFreqs.push(bands[b * 4 + 2][(val >> 4) & 0x03]);
-      activeFreqs.push(bands[b * 4 + 3][(val >> 6) & 0x03]);
-    }
-
-    activeFreqs.forEach(f => playTone(offCtx, f, t, duration * 0.92));
-    t += duration;
-
-    if (i % 100 === 0) {
-      progress.value = (i / totalChords) * 50;
-      await new Promise(r => setTimeout(r, 0));
-    }
+  const mode = document.getElementById('imgCompressSel').value;
+  if (mode === 'raw') {
+    fetch(imgEl.src).then(res => res.arrayBuffer()).then(buf => {
+      txImageBytes = new Uint8Array(buf);
+      document.getElementById('txStatus').innerText = `RAW: ${txImageBytes.length}B`;
+    });
+    return;
   }
 
-  statusEl.innerText = 'レンダリング中...';
-  const renderedBuffer = await offCtx.startRendering();
-  progress.value = 100;
+  const targetSize = parseInt(mode);
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  
+  let w = imgEl.naturalWidth || targetSize;
+  let h = imgEl.naturalHeight || targetSize;
+  if (w > h) { h = Math.round((h * targetSize) / w); w = targetSize; }
+  else { w = Math.round((w * targetSize) / h); h = targetSize; }
 
-  const realCtx = getCtx();
-  currentSourceNode = realCtx.createBufferSource();
-  currentSourceNode.buffer = renderedBuffer;
-  currentSourceNode.connect(realCtx.destination);
+  canvas.width = w; canvas.height = h;
+  ctx.drawImage(imgEl, 0, 0, w, h);
 
-  statusEl.innerText = `送信中 (${totalChords}和音)`;
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+  const base64 = dataUrl.split(',')[1];
+  const binaryStr = atob(base64);
+  txImageBytes = new Uint8Array(binaryStr.length);
+  for (let i = 0; i < binaryStr.length; i++) txImageBytes[i] = binaryStr.charCodeAt(i);
 
-  currentSourceNode.onended = () => {
-    sendBtn.disabled = false; stopBtn.disabled = true;
-    progress.style.display = 'none';
-    statusEl.innerText = '送信完了';
-  };
-
-  currentSourceNode.start();
+  document.getElementById('txStatus').innerText = `圧縮後: ${txImageBytes.length}B (${w}x${h})`;
 }
 
-function playTone(ctx, freq, start, duration) {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.frequency.value = freq;
-  
-  gain.gain.setValueAtTime(0.0001, start);
-  gain.gain.linearRampToValueAtTime(0.08, start + 0.004);
-  gain.gain.setValueAtTime(0.08, start + duration - 0.004);
-  gain.gain.linearRampToValueAtTime(0.0001, start + duration);
+/**
+ * -------------------------------------------------------------
+ * TX (送信処理)
+ * -------------------------------------------------------------
+ */
+let txAbort = false;
 
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start(start);
-  osc.stop(start + duration);
+function playBundle(ctx, clkFreq, dataFreqs, startTime, duration) {
+  const all = [clkFreq, ...dataFreqs];
+  const master = ctx.createGain();
+  const gainVal = 0.75 / all.length;
+
+  master.gain.setValueAtTime(0.0001, startTime);
+  master.gain.linearRampToValueAtTime(gainVal, startTime + 0.005);
+  master.gain.setValueAtTime(gainVal, startTime + duration - 0.005);
+  master.gain.linearRampToValueAtTime(0.0001, startTime + duration);
+  master.connect(ctx.destination);
+
+  all.forEach(f => {
+    const osc = ctx.createOscillator();
+    osc.type = 'sine'; osc.frequency.value = f;
+    osc.connect(master);
+    osc.start(startTime); osc.stop(startTime + duration);
+  });
+}
+
+async function transmit() {
+  let payloadBytes = null;
+  let typeByte = TYPE_TEXT;
+
+  if (activeTab === 'text') {
+    const text = document.getElementById('txInput').value;
+    if (!text) return;
+    payloadBytes = new TextEncoder().encode(text);
+    typeByte = TYPE_TEXT;
+  } else {
+    if (!txImageBytes) { alert('画像を選択してください'); return; }
+    payloadBytes = txImageBytes;
+    typeByte = TYPE_IMAGE;
+  }
+
+  // パケット構築: [0xAA, 0x55, TYPE, LEN_HI, LEN_LO, ...PAYLOAD]
+  const totalLen = payloadBytes.length;
+  const packet = new Uint8Array(5 + totalLen);
+  packet[0] = HEADER_MAGIC[0];
+  packet[1] = HEADER_MAGIC[1];
+  packet[2] = typeByte;
+  packet[3] = (totalLen >> 8) & 0xFF;
+  packet[4] = totalLen & 0xFF;
+  packet.set(payloadBytes, 5);
+
+  const ctx = getCtx();
+  const bandCount = parseInt(document.getElementById('polyphonySel').value);
+  const bands = generateBands(bandCount);
+  const bytesPerChord = bandCount / 4;
+  const duration = 0.12; // 120ms / chord
+
+  txAbort = false;
+  document.getElementById('sendBtn').disabled = true;
+  document.getElementById('stopBtn').disabled = false;
+  const progressBar = document.getElementById('txProgressBar');
+  const progressFill = document.getElementById('txProgressFill');
+  progressBar.style.display = 'block';
+
+  let t = ctx.currentTime + 0.05;
+
+  // プリアンブルトーン (開始信号)
+  playBundle(ctx, CLK_FREQS[0], bands.map(b => b[0]), t, 0.15);
+  t += 0.16;
+
+  const totalChords = Math.ceil(packet.length / bytesPerChord);
+
+  for (let i = 0; i < totalChords; i++) {
+    if (txAbort) break;
+
+    const chunk = packet.slice(i * bytesPerChord, (i + 1) * bytesPerChord);
+    const chunkArr = Array.from(chunk);
+    while (chunkArr.length < bytesPerChord) chunkArr.push(0x00);
+
+    const clk = (i % 2 === 0) ? CLK_FREQS[0] : CLK_FREQS[1];
+    const freqs = [];
+
+    for (let b = 0; b < bytesPerChord; b++) {
+      const val = chunkArr[b];
+      freqs.push(bands[b * 4 + 0][val & 0x03]);
+      freqs.push(bands[b * 4 + 1][(val >> 2) & 0x03]);
+      freqs.push(bands[b * 4 + 2][(val >> 4) & 0x03]);
+      freqs.push(bands[b * 4 + 3][(val >> 6) & 0x03]);
+    }
+
+    playBundle(ctx, clk, freqs, t, duration);
+    t += duration;
+
+    const pct = Math.round(((i + 1) / totalChords) * 100);
+    progressFill.style.width = `${pct}%`;
+    document.getElementById('txStatus').innerText = `送信中: ${pct}% (${i + 1}/${totalChords}和音)`;
+  }
+
+  const waitMs = (t - ctx.currentTime) * 1000;
+  await new Promise(r => setTimeout(r, Math.max(10, waitMs)));
+
+  document.getElementById('sendBtn').disabled = false;
+  document.getElementById('stopBtn').disabled = true;
+  document.getElementById('txStatus').innerText = '送信完了';
+  setTimeout(() => { progressBar.style.display = 'none'; }, 1000);
 }
 
 document.getElementById('sendBtn').addEventListener('click', transmit);
-document.getElementById('stopBtn').addEventListener('click', () => {
-  if (currentSourceNode) {
-    currentSourceNode.stop();
-    document.getElementById('sendBtn').disabled = false;
-    document.getElementById('stopBtn').disabled = true;
-    document.getElementById('txStatus').innerText = '送信中断';
-  }
-});
+document.getElementById('stopBtn').addEventListener('click', () => { txAbort = true; });
 
-// --- RX 受信エンジン (ScriptProcessor サンプル単位高精度同期) ---
+/**
+ * -------------------------------------------------------------
+ * RX (受信 & デコード & スペアナ / スペクトログラム)
+ * -------------------------------------------------------------
+ */
 let rxRunning = false;
 let rxStream = null;
-let scriptNode = null;
+let hpfNode = null;
 let analyser = null;
-let squelchLevel = -60;
+let squelchLevel = 40;
 let samplingDelayRatio = 0.45;
-let receivedBytes = [];
 
-let rxState = 'IDLE'; // IDLE -> SYNC_1 -> SYNC_2 -> DATA
-let samplesProcessed = 0;
-let nextSampleTarget = 0;
+let receivedBytes = [];
+let lastClkState = null;
+let isSamplingScheduled = false;
+let scheduledSampleTime = 0;
+
+// スペクトログラム履歴バッファ
+let specHistory = [];
+
+const hpfSlider = document.getElementById('hpfSlider');
+hpfSlider.addEventListener('input', (e) => {
+  document.getElementById('hpfVal').innerText = `${e.target.value} Hz`;
+  if (hpfNode) hpfNode.frequency.setValueAtTime(parseInt(e.target.value), audioCtx.currentTime);
+});
 
 const sqSlider = document.getElementById('sqSlider');
 sqSlider.addEventListener('input', (e) => {
   squelchLevel = parseInt(e.target.value);
-  document.getElementById('sqVal').innerText = `${squelchLevel} dB`;
+  document.getElementById('sqVal').innerText = squelchLevel;
 });
 
 const delaySlider = document.getElementById('delaySlider');
@@ -430,17 +505,12 @@ document.getElementById('clearBtn').addEventListener('click', () => {
   receivedBytes = [];
   document.getElementById('rxHex').innerText = '---';
   document.getElementById('rxText').innerText = '';
-  const imgRes = document.getElementById('rxImgResult');
-  imgRes.style.display = 'none'; imgRes.src = '';
-  getActiveBands().forEach((_, i) => {
-    const el = document.getElementById(`v${i}`);
-    if (el) el.innerText = '--';
-  });
+  document.getElementById('rxImgOutput').style.display = 'none';
+  document.getElementById('rxImgStatus').innerText = '画像未受信';
 });
 
 document.getElementById('rxBtn').addEventListener('click', async () => {
-  if (rxRunning) stopRx();
-  else await startRx();
+  if (rxRunning) stopRx(); else await startRx();
 });
 
 async function startRx() {
@@ -451,109 +521,28 @@ async function startRx() {
     });
     const src = ctx.createMediaStreamSource(rxStream);
 
+    hpfNode = ctx.createBiquadFilter();
+    hpfNode.type = 'highpass';
+    hpfNode.frequency.value = parseInt(hpfSlider.value);
+
     analyser = ctx.createAnalyser();
-    analyser.fftSize = FFT_SIZE;
-    analyser.smoothingTimeConstant = 0.0;
+    analyser.fftSize = 4096;
+    analyser.smoothingTimeConstant = 0.12;
 
-    scriptNode = ctx.createScriptProcessor(2048, 1, 1);
-
-    src.connect(analyser);
-    analyser.connect(scriptNode);
-    scriptNode.connect(ctx.destination);
+    src.connect(hpfNode);
+    hpfNode.connect(analyser);
 
     rxRunning = true;
-    rxState = 'IDLE';
-    samplesProcessed = 0;
-    receivedBytes = [];
-
-    document.getElementById('rxBtn').innerText = '⏹ 停止';
+    document.getElementById('rxBtn').innerText = '⏹ マイク停止';
     document.getElementById('rxBtn').className = 'btn btn-red';
-
-    const freqData = new Float32Array(analyser.frequencyBinCount);
-    const bands = getActiveBands();
-    const chordMs = parseInt(document.getElementById('durationSel').value);
-    const samplesPerSymbol = Math.round(SAMPLE_RATE * (chordMs / 1000));
-
-    scriptNode.onaudioprocess = () => {
-      if (!rxRunning) return;
-      analyser.getFloatFrequencyData(freqData);
-      samplesProcessed += 2048;
-
-      const getBinPower = (bin) => Math.max(freqData[bin-1], freqData[bin], freqData[bin+1]);
-
-      const pSync1 = getBinPower(SYNC_BIN_1);
-      const pSync2 = getBinPower(SYNC_BIN_2);
-
-      const led = document.getElementById('rxLed');
-      const rxStatus = document.getElementById('rxStatus');
-
-      // ステートマシンによるプリアンブル解析
-      if (rxState === 'IDLE') {
-        if (pSync1 > squelchLevel) {
-          rxState = 'SYNC_1';
-        }
-      } else if (rxState === 'SYNC_1') {
-        if (pSync2 > squelchLevel) {
-          rxState = 'SYNC_2';
-          nextSampleTarget = samplesProcessed + Math.round(SAMPLE_RATE * 0.18) + Math.round(samplesPerSymbol * samplingDelayRatio);
-          rxStatus.innerText = 'LOCKED (同期完了・データ受信中)';
-          rxStatus.style.color = 'var(--green)';
-          led.className = 'led open';
-        }
-      } else if (rxState === 'DATA') {
-        if (samplesProcessed >= nextSampleTarget) {
-          nextSampleTarget += samplesPerSymbol;
-
-          const bytesPerChord = Math.max(1, Math.floor(bands.length / 4));
-          const decodedChunk = [];
-          let validSignal = false;
-
-          for (let b = 0; b < bytesPerChord; b++) {
-            let chordByte = 0;
-            for (let sub = 0; sub < 4; sub++) {
-              const bandIdx = b * 4 + sub;
-              let maxP = -999;
-              let bestVal = 0;
-
-              bands[bandIdx].forEach((f, val) => {
-                const targetBin = Math.round(f / BIN_WIDTH);
-                const p = getBinPower(targetBin);
-                if (p > maxP) { maxP = p; bestVal = val; }
-              });
-
-              if (maxP > squelchLevel) validSignal = true;
-
-              const el = document.getElementById(`v${bandIdx}`);
-              if (el) el.innerText = bestVal.toString(2).padStart(2, '0');
-
-              chordByte |= (bestVal << (sub * 2));
-            }
-            decodedChunk.push(chordByte);
-          }
-
-          if (validSignal) {
-            onChunkDecoded(decodedChunk);
-          } else {
-            rxState = 'IDLE';
-            rxStatus.innerText = 'STANDBY (信号終了)';
-            rxStatus.style.color = 'var(--muted)';
-            led.className = 'led closed';
-          }
-        }
-      }
-
-      if (rxState === 'SYNC_2') rxState = 'DATA';
-    };
-
-    renderSpecLoop();
+    renderRxLoop();
   } catch (err) {
-    alert('マイクエラー: ' + err.message);
+    alert('マイク起動エラー: ' + err.message);
   }
 }
 
 function stopRx() {
   if (rxStream) rxStream.getTracks().forEach(t => t.stop());
-  if (scriptNode) scriptNode.disconnect();
   rxRunning = false;
   document.getElementById('rxBtn').innerText = '🎤 受信開始';
   document.getElementById('rxBtn').className = 'btn btn-green';
@@ -561,49 +550,200 @@ function stopRx() {
   document.getElementById('rxStatus').innerText = 'STANDBY';
 }
 
-function renderSpecLoop() {
+function renderRxLoop() {
   const canvas = document.getElementById('specCanvas');
   const ctx2d = canvas.getContext('2d');
-  const data = new Uint8Array(analyser.frequencyBinCount);
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx2d.scale(dpr, dpr);
+
+  const binCount = analyser.frequencyBinCount;
+  const freqData = new Uint8Array(binCount);
+
+  function getMagAt(f) {
+    const bin = Math.round(f / (audioCtx.sampleRate / analyser.fftSize));
+    let m = 0;
+    for (let i = Math.max(0, bin - 1); i <= Math.min(binCount - 1, bin + 1); i++) {
+      if (freqData[i] > m) m = freqData[i];
+    }
+    return m;
+  }
 
   function loop() {
     if (!rxRunning) return;
     requestAnimationFrame(loop);
 
-    analyser.getByteFrequencyData(data);
-    const w = canvas.width = canvas.clientWidth;
-    const h = canvas.height = canvas.clientHeight;
+    analyser.getByteFrequencyData(freqData);
 
-    ctx2d.fillStyle = '#010205'; ctx2d.fillRect(0, 0, w, h);
-    ctx2d.fillStyle = '#00f0ff';
+    const w = rect.width;
+    const h = rect.height;
+    const maxF = 12000;
+    const vizMode = document.getElementById('vizModeSel').value;
+    const bandCount = parseInt(document.getElementById('polyphonySel').value);
+    const bands = generateBands(bandCount);
 
-    for (let i = 0; i < data.length; i++) {
-      const barHeight = (data[i] / 255) * h;
-      ctx2d.fillRect(i * 2, h - barHeight, 1.5, barHeight);
+    // 1. 描画 (波形 OR スペクトログラム)
+    if (vizMode === 'spectrum') {
+      ctx2d.fillStyle = '#010205';
+      ctx2d.fillRect(0, 0, w, h);
+
+      ctx2d.beginPath();
+      ctx2d.strokeStyle = '#00f0ff';
+      ctx2d.fillStyle = 'rgba(0, 240, 255, 0.08)';
+      ctx2d.lineWidth = 1.2;
+      ctx2d.moveTo(0, h);
+      for (let i = 0; i < binCount; i++) {
+        const f = i * (audioCtx.sampleRate / analyser.fftSize);
+        if (f > maxF) break;
+        const x = (f / maxF) * w;
+        const y = h - (freqData[i] / 255) * h;
+        ctx2d.lineTo(x, y);
+      }
+      ctx2d.lineTo(w, h); ctx2d.fill(); ctx2d.stroke();
+    } else {
+      // スペクトログラム表示
+      const slice = [];
+      for (let i = 0; i < 150; i++) slice.push(freqData[i * 2] || 0);
+      specHistory.push(slice);
+      if (specHistory.length > w) specHistory.shift();
+
+      ctx2d.fillStyle = '#010205'; ctx2d.fillRect(0, 0, w, h);
+      for (let x = 0; x < specHistory.length; x++) {
+        const col = specHistory[x];
+        for (let y = 0; y < col.length; y++) {
+          const val = col[y];
+          if (val > 20) {
+            ctx2d.fillStyle = `hsl(${240 - val}, 100%, ${val / 3}%)`;
+            ctx2d.fillRect(x, h - (y * (h / col.length)), 1, h / col.length);
+          }
+        }
+      }
+    }
+
+    // 2. スケルチ線描画
+    const sqY = h - (squelchLevel / 255) * h;
+    ctx2d.strokeStyle = '#ff3344'; ctx2d.setLineDash([4, 4]);
+    ctx2d.beginPath(); ctx2d.moveTo(0, sqY); ctx2d.lineTo(w, sqY); ctx2d.stroke();
+    ctx2d.setLineDash([]);
+
+    // 3. クロック & 各バンド信号検出
+    const magA = getMagAt(CLK_FREQS[0]);
+    const magB = getMagAt(CLK_FREQS[1]);
+    const maxClkMag = Math.max(magA, magB);
+    const clkOpen = (maxClkMag >= squelchLevel);
+    const activeClk = (magA > magB) ? 0 : 1;
+
+    const bandHits = bands.map(b => {
+      let best = 0, maxM = 0;
+      b.forEach((f, idx) => {
+        const m = getMagAt(f);
+        if (m > maxM) { maxM = m; best = idx; }
+      });
+      return { idx: best, mag: maxM };
+    });
+
+    const led = document.getElementById('rxLed');
+    const rxStatus = document.getElementById('rxStatus');
+
+    if (clkOpen) {
+      led.className = 'led open';
+      rxStatus.innerText = `SYNC LOCK [CLK ${activeClk === 0 ? '650Hz' : '770Hz'}]`;
+      rxStatus.style.color = 'var(--green)';
+
+      const now = performance.now();
+      if (lastClkState !== null && lastClkState !== activeClk) {
+        isSamplingScheduled = true;
+        scheduledSampleTime = now + (120 * samplingDelayRatio);
+      }
+      lastClkState = activeClk;
+
+      if (isSamplingScheduled && now >= scheduledSampleTime) {
+        isSamplingScheduled = false;
+        const bytesPerChord = bands.length / 4;
+        const decodedChords = [];
+
+        for (let b = 0; b < bytesPerChord; b++) {
+          const s0 = bandHits[b * 4 + 0].idx;
+          const s1 = bandHits[b * 4 + 1].idx;
+          const s2 = bandHits[b * 4 + 2].idx;
+          const s3 = bandHits[b * 4 + 3].idx;
+          decodedChords.push((s3 << 6) | (s2 << 4) | (s1 << 2) | s0);
+        }
+        onChunkDecoded(decodedChords);
+      }
+    } else {
+      led.className = 'led closed';
+      rxStatus.innerText = 'SQUELCH CLOSED';
+      rxStatus.style.color = 'var(--muted)';
+      lastClkState = null;
+      isSamplingScheduled = false;
     }
   }
+
   loop();
 }
 
+/**
+ * -------------------------------------------------------------
+ * パケット解析 & 復号プロトコル処理
+ * -------------------------------------------------------------
+ */
 function onChunkDecoded(byteArr) {
   receivedBytes.push(...byteArr);
-  const cleanBytes = receivedBytes.filter(b => b !== 0x00);
 
-  const hexStr = cleanBytes.slice(-20).map(x => x.toString(16).padStart(2, '0').toUpperCase()).join(' ');
-  document.getElementById('rxHex').innerText = `[Total: ${cleanBytes.length}B] ${hexStr}`;
+  const hexStr = receivedBytes.map(x => x.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+  document.getElementById('rxHex').innerText = hexStr;
 
-  try {
-    const text = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(cleanBytes));
-    if (text.startsWith('data:image/')) {
-      document.getElementById('rxText').innerText = '[画像データ受信中/完了]';
-      const imgRes = document.getElementById('rxImgResult');
-      imgRes.src = text;
-      imgRes.style.display = 'block';
-    } else {
-      document.getElementById('rxText').innerText = text;
+  // パケットヘッダー検索 (0xAA, 0x55)
+  const headerIdx = findHeaderIndex(receivedBytes);
+  if (headerIdx !== -1 && receivedBytes.length >= headerIdx + 5) {
+    const typeByte = receivedBytes[headerIdx + 2];
+    const totalLen = (receivedBytes[headerIdx + 3] << 8) | receivedBytes[headerIdx + 4];
+    const payloadStart = headerIdx + 5;
+    const availablePayload = receivedBytes.length - payloadStart;
+
+    if (typeByte === TYPE_TEXT) {
+      const payload = receivedBytes.slice(payloadStart, payloadStart + totalLen);
+      const text = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(payload));
+      document.getElementById('rxText').innerText = `[テキスト受信中 ${availablePayload}/${totalLen}B]\n${text}`;
+    } else if (typeByte === TYPE_IMAGE) {
+      document.getElementById('rxText').innerText = `[画像データ受信中 ${availablePayload}/${totalLen}Bytes]`;
+      if (availablePayload >= totalLen) {
+        // 画像受信完了 -> 画像描画
+        const imgPayload = new Uint8Array(receivedBytes.slice(payloadStart, payloadStart + totalLen));
+        renderReceivedImage(imgPayload);
+      }
     }
+  } else {
+    // ヘッダー未確定時はそのままテキスト復号を試行
+    try {
+      const text = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(receivedBytes));
+      document.getElementById('rxText').innerText = text;
+    } catch (e) {}
+  }
+}
+
+function findHeaderIndex(bytes) {
+  for (let i = 0; i < bytes.length - 1; i++) {
+    if (bytes[i] === HEADER_MAGIC[0] && bytes[i + 1] === HEADER_MAGIC[1]) return i;
+  }
+  return -1;
+}
+
+function renderReceivedImage(uint8Arr) {
+  try {
+    let binary = '';
+    for (let i = 0; i < uint8Arr.length; i++) binary += String.fromCharCode(uint8Arr[i]);
+    const base64 = btoa(binary);
+    
+    const imgEl = document.getElementById('rxImgOutput');
+    imgEl.src = `data:image/jpeg;base64,${base64}`;
+    imgEl.style.display = 'block';
+    document.getElementById('rxImgStatus').innerText = `✅ 画像復元完了 (${uint8Arr.length} Bytes)`;
   } catch (e) {
-    console.warn(e);
+    document.getElementById('rxImgStatus').innerText = `❌ 画像展開エラー: ${e.message}`;
   }
 }
 </script>
