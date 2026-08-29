@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>High-Speed Multi-Carrier Modem (Variable Carriers)</title>
+  <title>High-Speed Multi-Carrier Modem (Full RX/TX Dynamic)</title>
   <style>
     :root {
       --bg: #080c14;
@@ -72,7 +72,7 @@
 <div class="app">
   <header>
     <h1>TURBO MULTI-CARRIER MODEM</h1>
-    <p>可変キャリア（5 / 10 / 20 / 25波）+ 高速ストリーミング合成</p>
+    <p>可変キャリア（5 / 10 / 20 / 25波）+ リアルタイム多重復号エンジン</p>
   </header>
 
   <div class="grid">
@@ -96,8 +96,8 @@
       </div>
 
       <div class="row" style="margin-top:10px;">
-        <label style="font-size:0.8rem; color:var(--muted);">キャリア数:</label>
-        <select id="carrierSel">
+        <label style="font-size:0.8rem; color:var(--muted);">送信キャリア数:</label>
+        <select id="txCarrierSel">
           <option value="5" selected>5波 (4 Data + 1 CLK / 1B/slot)</option>
           <option value="10">10波 (9 Data + 1 CLK / 2B/slot)</option>
           <option value="20">20波 (19 Data + 1 CLK / 4B/slot)</option>
@@ -107,8 +107,8 @@
 
       <div class="row">
         <label style="font-size:0.8rem; color:var(--muted);">1スロット長 (ms):</label>
-        <input type="number" id="slotMsInput" value="30" min="5" max="300" style="width:70px;">
-        <span style="font-size:0.75rem; color:var(--muted);"> (推薦: 5〜50ms)</span>
+        <input type="number" id="slotMsInput" value="40" min="5" max="300" style="width:70px;">
+        <span style="font-size:0.75rem; color:var(--muted);"> (推奨: 20〜60ms)</span>
       </div>
 
       <progress id="txProgress" value="0" max="100" style="display:none;"></progress>
@@ -122,9 +122,19 @@
 
     <!-- RX 受信機 -->
     <div class="card">
-      <div class="card-title rx">👂 スペクトラムアナライザ (RX)</div>
+      <div class="card-title rx">👂 複合音 デコーダ (RX)</div>
 
       <div class="row">
+        <label style="font-size:0.8rem; color:var(--muted);">受信キャリア数:</label>
+        <select id="rxCarrierSel">
+          <option value="5" selected>5波 モード</option>
+          <option value="10">10波 モード</option>
+          <option value="20">20波 モード</option>
+          <option value="25">25波 モード</option>
+        </select>
+      </div>
+
+      <div class="row" style="margin-top:6px;">
         <button id="rxBtn" class="btn btn-green">🎤 マイク受信開始</button>
         <button id="clearBtn" class="btn">クリア</button>
         <div style="display:inline-flex; align-items:center; gap:6px; margin-left:auto;">
@@ -156,7 +166,7 @@
 </div>
 
 <script>
-// ベース周波数設定 (CLK 200/300Hz, データバンド 400Hz〜, 1バンドあたり4周波数 / 100Hzステップ)
+// ベース周波数構成（クロック: 250/350Hz, データ: 500Hz〜, 各バンド100Hz幅）
 const CLK_FREQS = [250, 350];
 function generateBands(count) {
   const bands = [];
@@ -212,10 +222,10 @@ document.getElementById('imgInput').addEventListener('change', (e) => {
 let currentSourceNode = null;
 
 async function generateAndTransmit() {
-  const carrierCount = parseInt(document.getElementById('carrierSel').value);
-  const dataBandCount = carrierCount - 1; // 1波はクロック用
+  const carrierCount = parseInt(document.getElementById('txCarrierSel').value);
+  const dataBandCount = carrierCount - 1;
   const bands = generateBands(dataBandCount);
-  const slotMs = parseInt(document.getElementById('slotMsInput').value) || 30;
+  const slotMs = parseInt(document.getElementById('slotMsInput').value) || 40;
   const duration = slotMs / 1000;
 
   let payload = sendMode === 'text' ? document.getElementById('txInput').value : preparedImgDataUrl;
@@ -230,10 +240,10 @@ async function generateAndTransmit() {
   sendBtn.disabled = true;
   progress.style.display = 'block';
   progress.value = 0;
-  stats.innerText = `音声波形を計算中... (全 ${bytes.length} B)`;
+  stats.innerText = `波形生成中... (${bytes.length} B)`;
 
-  // 1スロットあたり送信できるバイト数 (2bit * dataBandCount)
-  const bytesPerSlot = Math.floor((dataBandCount * 2) / 8) || 1;
+  const bitsPerSlot = dataBandCount * 2;
+  const bytesPerSlot = Math.floor(bitsPerSlot / 8) || 1;
   const totalSlots = Math.ceil(bytes.length / bytesPerSlot);
 
   const preambleTime = 0.2 + (4 * duration);
@@ -244,7 +254,7 @@ async function generateAndTransmit() {
 
   let t = 0.05;
 
-  // プリアンブル (同期確立用)
+  // プリアンブル (同期確立)
   const dummyData = Array(dataBandCount).fill(0);
   addToneBundle(offlineCtx, CLK_FREQS[0], dummyData, bands, t, 0.15); t += 0.16;
   for (let p = 0; p < 4; p++) {
@@ -252,13 +262,12 @@ async function generateAndTransmit() {
     t += duration;
   }
 
-  // 本データブロックの展開
+  // 本データ展開
   let byteIdx = 0;
   for (let slot = 0; slot < totalSlots; slot++) {
     const clkFreq = (slot % 2 === 0) ? CLK_FREQS[0] : CLK_FREQS[1];
     const slotBands = [];
 
-    // 各バンドに2bitずつマッピング
     let currentBitPos = 0;
     let tempVal = 0;
     for (let b = 0; b < dataBandCount; b++) {
@@ -273,13 +282,13 @@ async function generateAndTransmit() {
     addToneBundle(offlineCtx, clkFreq, slotBands, bands, t, duration);
     t += duration;
 
-    if (slot % 500 === 0) {
+    if (slot % 400 === 0) {
       progress.value = (slot / totalSlots) * 50;
-      await new Promise(r => setTimeout(r, 0)); // UIスレッドを解放
+      await new Promise(r => setTimeout(r, 0));
     }
   }
 
-  stats.innerText = 'オーディオレンダリング中...';
+  stats.innerText = 'オーディオバッファ生成完了';
   const renderedBuffer = await offlineCtx.startRendering();
   progress.value = 100;
 
@@ -289,13 +298,13 @@ async function generateAndTransmit() {
   currentSourceNode.connect(realCtx.destination);
 
   stopBtn.disabled = false;
-  stats.innerText = `送信中 [${carrierCount}波 / ${slotMs}ms/スロット / 全 ${totalSlots} スロット]`;
+  stats.innerText = `送信中 [${carrierCount}波 / ${slotMs}ms / ${totalSlots}スロット]`;
 
   currentSourceNode.onended = () => {
     sendBtn.disabled = false;
     stopBtn.disabled = true;
     progress.style.display = 'none';
-    stats.innerText = '送信完了 (COMPLETE)';
+    stats.innerText = '送信完了';
   };
 
   currentSourceNode.start();
@@ -309,7 +318,6 @@ function addToneBundle(ctx, clkFreq, bandValues, bands, startTime, duration) {
   masterGain.gain.linearRampToValueAtTime(0.0001, startTime + duration);
   masterGain.connect(ctx.destination);
 
-  // CLK Oscillator
   const oscClk = ctx.createOscillator();
   oscClk.type = 'sine';
   oscClk.frequency.value = clkFreq;
@@ -317,7 +325,6 @@ function addToneBundle(ctx, clkFreq, bandValues, bands, startTime, duration) {
   oscClk.start(startTime);
   oscClk.stop(startTime + duration);
 
-  // Data Oscillators
   for (let i = 0; i < bandValues.length; i++) {
     const val = bandValues[i];
     const freq = bands[i][val];
@@ -340,12 +347,15 @@ document.getElementById('stopBtn').addEventListener('click', () => {
   }
 });
 
-// RX 受信部 (アナライザ機能のみ・可視化対応)
+// RX 受信復号処理
 let rxRunning = false;
 let rxStream = null;
 let analyser = null;
 let squelchLevel = 100;
 let receivedBytes = [];
+
+let lastClkState = null;
+let lastClkChangeTime = 0;
 
 const sqSlider = document.getElementById('sqSlider');
 sqSlider.addEventListener('input', (e) => {
@@ -355,6 +365,7 @@ sqSlider.addEventListener('input', (e) => {
 
 document.getElementById('clearBtn').addEventListener('click', () => {
   receivedBytes = [];
+  lastClkState = null;
   document.getElementById('rxHex').innerText = '---';
   document.getElementById('rxText').innerText = '';
   const imgRes = document.getElementById('rxImgResult');
@@ -376,7 +387,7 @@ async function startRx() {
     const src = ctx.createMediaStreamSource(rxStream);
     analyser = ctx.createAnalyser();
     analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0.1;
+    analyser.smoothingTimeConstant = 0.08;
     src.connect(analyser);
 
     rxRunning = true;
@@ -409,6 +420,15 @@ function renderSpecLoop() {
   const binCount = analyser.frequencyBinCount;
   const freqData = new Uint8Array(binCount);
 
+  function getMagAt(f) {
+    const bin = Math.round(f / (audioCtx.sampleRate / analyser.fftSize));
+    let m = 0;
+    for (let i = Math.max(0, bin - 1); i <= Math.min(binCount - 1, bin + 1); i++) {
+      if (freqData[i] > m) m = freqData[i];
+    }
+    return m;
+  }
+
   function loop() {
     if (!rxRunning) return;
     requestAnimationFrame(loop);
@@ -417,9 +437,14 @@ function renderSpecLoop() {
     const w = rect.width, h = rect.height;
     const maxF = 7000;
 
+    const carrierCount = parseInt(document.getElementById('rxCarrierSel').value);
+    const dataBandCount = carrierCount - 1;
+    const bands = generateBands(dataBandCount);
+
     ctx2d.fillStyle = '#03050a';
     ctx2d.fillRect(0, 0, w, h);
 
+    // スペクトラム波形描画
     ctx2d.beginPath();
     ctx2d.strokeStyle = '#00f0ff';
     ctx2d.lineWidth = 1.2;
@@ -432,13 +457,90 @@ function renderSpecLoop() {
     }
     ctx2d.stroke();
 
+    // スケルチ線
     const sqY = h - (squelchLevel / 255) * h;
     ctx2d.strokeStyle = '#ff3344';
     ctx2d.setLineDash([4, 4]);
     ctx2d.beginPath(); ctx2d.moveTo(0, sqY); ctx2d.lineTo(w, sqY); ctx2d.stroke();
     ctx2d.setLineDash([]);
+
+    // クロック判定
+    const magClkA = getMagAt(CLK_FREQS[0]);
+    const magClkB = getMagAt(CLK_FREQS[1]);
+    const maxClkMag = Math.max(magClkA, magClkB);
+    const clkDetected = (maxClkMag >= squelchLevel);
+    const activeClkIdx = (magClkA > magClkB) ? 0 : 1;
+
+    // データバンド判定
+    const bandResults = [];
+    for (let b = 0; b < dataBandCount; b++) {
+      let bestIdx = 0, maxM = 0;
+      for (let i = 0; i < 4; i++) {
+        const m = getMagAt(bands[b][i]);
+        if (m > maxM) { maxM = m; bestIdx = i; }
+      }
+      bandResults.push(bestIdx);
+    }
+
+    const led = document.getElementById('rxLed');
+    const rxStatus = document.getElementById('rxStatus');
+
+    if (clkDetected) {
+      led.className = 'led open';
+      rxStatus.innerText = `SYNC LOCK (${carrierCount}波 / CLK ${activeClkIdx === 0 ? 'A' : 'B'})`;
+      rxStatus.style.color = 'var(--green)';
+
+      const now = performance.now();
+      // クロックのトグル（反転）検知でマルチビット復号実行
+      if (lastClkState !== null && lastClkState !== activeClkIdx && (now - lastClkChangeTime > 8)) {
+        
+        let bitBuffer = 0;
+        let bitsInBuf = 0;
+
+        for (let b = 0; b < dataBandCount; b++) {
+          const val2bit = bandResults[b];
+          bitBuffer |= (val2bit << bitsInBuf);
+          bitsInBuf += 2;
+
+          while (bitsInBuf >= 8) {
+            const extractedByte = bitBuffer & 0xFF;
+            onByteReceived(extractedByte);
+            bitBuffer >>= 8;
+            bitsInBuf -= 8;
+          }
+        }
+        
+        lastClkChangeTime = now;
+      }
+      lastClkState = activeClkIdx;
+    } else {
+      led.className = 'led closed';
+      rxStatus.innerText = 'SQUELCH CLOSED';
+      rxStatus.style.color = 'var(--muted)';
+      lastClkState = null;
+    }
   }
   loop();
+}
+
+function onByteReceived(b) {
+  receivedBytes.push(b);
+  const hexStr = receivedBytes.slice(-30).map(x => x.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+  document.getElementById('rxHex').innerText = `[Total: ${receivedBytes.length}B] ${hexStr}`;
+
+  try {
+    const decodedStr = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(receivedBytes));
+    if (decodedStr.startsWith('data:image/')) {
+      document.getElementById('rxText').innerText = '[画像データ受信中 / 完了]';
+      const imgRes = document.getElementById('rxImgResult');
+      imgRes.src = decodedStr;
+      imgRes.style.display = 'block';
+    } else {
+      document.getElementById('rxText').innerText = decodedStr;
+    }
+  } catch (e) {
+    console.warn(e);
+  }
 }
 </script>
 </body>
