@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ultimate Multi-Carrier Acoustic Modem (Text & Image)</title>
+  <title>Full-Featured Multi-Carrier Acoustic Modem</title>
   <style>
     :root {
       --bg: #030509;
@@ -42,22 +42,20 @@
     .btn-green { background: #005229; border-color: var(--green); color: #fff; }
     .btn-green:hover { background: #00783c; box-shadow: 0 0 10px rgba(0,255,119,0.4); }
     .btn-red { background: #6e101d; border-color: var(--red); color: #fff; }
-    .btn-auto { background: #4a3800; border-color: var(--yellow); color: #fff; }
     .btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
     .row { display: flex; gap: 8px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
     select, input[type="file"] { background: #020408; color: #fff; border: 1px solid #1c2a44; padding: 5px 8px; border-radius: 4px; font-size: 0.78rem; }
 
     .spec-wrap { position: relative; background: #010205; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-top: 6px; }
-    canvas { display: block; width: 100%; height: 200px; }
+    canvas { display: block; width: 100%; height: 180px; }
 
     .matrix-wrap { margin-top: 6px; background: #020308; padding: 6px; border-radius: 4px; border: 1px solid var(--border); }
     .matrix-grid { display: grid; gap: 2px; max-height: 85px; overflow-y: auto; }
     .matrix-cell { text-align: center; border: 1px solid #101828; padding: 2px 0; border-radius: 2px; font-size: 0.58rem; background: #040710; }
     .matrix-val { font-size: 0.68rem; font-weight: bold; color: #fff; }
 
-    .ctrl-box { margin-top: 6px; background: #040710; padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border); display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-    @media(max-width: 750px) { .ctrl-box { grid-template-columns: 1fr; } }
+    .ctrl-box { margin-top: 6px; background: #040710; padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border); display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .ctrl-item { display: flex; flex-direction: column; gap: 2px; }
     .ctrl-hdr { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--muted); }
     input[type="range"] { width: 100%; accent-color: var(--yellow); cursor: pointer; }
@@ -66,7 +64,7 @@
     .led.open { background: var(--green); box-shadow: 0 0 6px var(--green); }
     .led.closed { background: var(--red); }
 
-    .out-box { background: #010205; border: 1px solid #141c2c; padding: 6px 8px; min-height: 42px; max-height: 80px; overflow-y: auto; border-radius: 4px; word-break: break-all; font-size: 0.85rem; margin-top: 4px; }
+    .out-box { background: #010205; border: 1px solid #141c2c; padding: 6px 8px; min-height: 42px; max-height: 90px; overflow-y: auto; border-radius: 4px; word-break: break-all; font-size: 0.85rem; margin-top: 4px; }
     .out-text { color: var(--green); }
     .out-hex { color: var(--muted); font-size: 0.7rem; }
 
@@ -83,8 +81,8 @@
 
 <div class="app">
   <header>
-    <h1>ULTIMATE ACOUSTIC MODEM</h1>
-    <p>可変多重波（5〜65音）× 自動画像/テキスト空間音声通信</p>
+    <h1>ULTIMATE ACOUSTIC MODEM (FIXED DSP)</h1>
+    <p>FFT Bin完全同期 × 高精度サンプリング × 画像・テキスト多重音波通信</p>
   </header>
 
   <div class="grid">
@@ -98,7 +96,7 @@
       </div>
 
       <div id="textModeGroup">
-        <textarea id="txInput" rows="3">画像もテキストも超高速で音波転送！</textarea>
+        <textarea id="txInput" rows="3">Bin同期で完全に通信成功！</textarea>
       </div>
 
       <div id="imgModeGroup" style="display:none;">
@@ -112,23 +110,22 @@
         <select id="polyphonySel">
           <option value="4">5波 (4 Band / 1B/和音)</option>
           <option value="8">9波 (8 Band / 2B/和音)</option>
-          <option value="16">17波 (16 Band / 4B/和音)</option>
+          <option value="16" selected>17波 (16 Band / 4B/和音) 【安定推奨】</option>
           <option value="24">25波 (24 Band / 6B/和音)</option>
-          <option value="32" selected>33波 (32 Band / 8B/和音) 【推奨】</option>
-          <option value="48">49波 (48 Band / 12B/和音)</option>
-          <option value="64">65波 (64 Band / 16B/和音) 【爆速】</option>
+          <option value="32">33波 (32 Band / 8B/和音)</option>
+          <option value="64">65波 (64 Band / 16B/和音) 【爆速・近距離】</option>
         </select>
       </div>
 
-      <div id="polyphonyInfo" class="polyphony-info">現在: 33音 同時発音</div>
+      <div id="polyphonyInfo" class="polyphony-info">現在: 17音 同時発音</div>
 
       <div class="row">
         <label style="font-size:0.75rem; color:var(--muted);">1和音の長さ (シンボル長):</label>
         <select id="durationSel">
-          <option value="180">180ms (反響にとても強い)</option>
-          <option value="120" selected>120ms (標準・高速)</option>
-          <option value="80">80ms (超高速・近距離用)</option>
-          <option value="50">50ms (爆速限界突破)</option>
+          <option value="200">200ms (長距離・反響に超強)</option>
+          <option value="150" selected>150ms (標準・高信頼)</option>
+          <option value="100">100ms (高速)</option>
+          <option value="60">60ms (爆速限界挑戦)</option>
         </select>
       </div>
 
@@ -143,11 +140,10 @@
 
     <!-- RX 受信側 -->
     <div class="card">
-      <div class="card-title rx">👂 高密度デコーダー & スペアナ (RX)</div>
+      <div class="card-title rx">👂 Bin同期 デコーダー & スペアナ (RX)</div>
 
       <div class="row">
         <button id="rxBtn" class="btn btn-green">🎤 受信開始</button>
-        <button id="autoSqBtn" class="btn btn-auto">⚡ スケルチ自動調整</button>
         <button id="clearBtn" class="btn">クリア</button>
         <div style="display:inline-flex; align-items:center; gap:5px; margin-left:auto;">
           <div id="rxLed" class="led closed"></div>
@@ -165,21 +161,14 @@
         <div class="matrix-grid" id="matrixGrid"></div>
       </div>
 
-      <!-- 3段調整コントロール -->
+      <!-- 調整コントロール -->
       <div class="ctrl-box">
         <div class="ctrl-item">
           <div class="ctrl-hdr">
-            <span>🧹 低音カット(HPF):</span>
-            <span id="hpfVal" style="color:var(--cyan); font-weight:bold;">550 Hz</span>
-          </div>
-          <input type="range" id="hpfSlider" min="50" max="850" value="550">
-        </div>
-        <div class="ctrl-item">
-          <div class="ctrl-hdr">
             <span>スケルチ (Squelch):</span>
-            <span id="sqVal" style="color:var(--yellow); font-weight:bold;">40</span>
+            <span id="sqVal" style="color:var(--yellow); font-weight:bold;">-60 dB</span>
           </div>
-          <input type="range" id="sqSlider" min="10" max="180" value="40">
+          <input type="range" id="sqSlider" min="-80" max="-30" value="-60">
         </div>
         <div class="ctrl-item">
           <div class="ctrl-hdr">
@@ -201,22 +190,33 @@
 </div>
 
 <script>
-const CLK_FREQS = [650, 770];
+// --- DSP & 周波数構造定義 (Bin完全同期) ---
+const FFT_SIZE = 4096;
+const SAMPLE_RATE = 44100;
+const BIN_WIDTH = SAMPLE_RATE / FFT_SIZE; // ≈ 10.766 Hz
 
-function generateDynamicBands(bandCount) {
+// Binに直結する正確な周波数を生成
+function binToFreq(bin) { return bin * BIN_WIDTH; }
+
+// 同期用音波 (プリアンブル Bin)
+const SYNC_BIN_1 = 80;  // ≈ 861 Hz
+const SYNC_BIN_2 = 120; // ≈ 1292 Hz
+
+// 動的にBinと重ならないキャリアグループを割り当てる関数
+function generateBinSynchronizedBands(bandCount) {
   const bands = [];
-  let currentBase = 900;
-  const step = 40;
-  const bandGap = 45;
+  let startBin = 160; // ≈ 1722 Hz からスタート
+  const stepBin = 3;   // 各シンボル間は3Bin離す
+  const gapBin = 4;    // バンド間は4Bin離して混信を防止
 
   for (let b = 0; b < bandCount; b++) {
     bands.push([
-      currentBase,
-      currentBase + step,
-      currentBase + step * 2,
-      currentBase + step * 3
+      binToFreq(startBin),
+      binToFreq(startBin + stepBin),
+      binToFreq(startBin + stepBin * 2),
+      binToFreq(startBin + stepBin * 3)
     ]);
-    currentBase += step * 3 + bandGap;
+    startBin += stepBin * 3 + gapBin;
   }
   return bands;
 }
@@ -228,16 +228,17 @@ const PALETTE = [
 
 function getActiveBands() {
   const count = parseInt(document.getElementById('polyphonySel').value);
-  return generateDynamicBands(count);
+  return generateBinSynchronizedBands(count);
 }
 
 let audioCtx = null;
 function getCtx() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE });
   if (audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
 }
 
+// モード切り替え & 画像ロード
 let sendMode = 'text';
 const tabText = document.getElementById('tabText');
 const tabImg = document.getElementById('tabImg');
@@ -275,10 +276,10 @@ document.getElementById('imgInput').addEventListener('change', (e) => {
 function updateMeterUI() {
   const bands = getActiveBands();
   const count = bands.length;
-  const bytesPerChord = count / 4;
+  const bytesPerChord = Math.max(1, Math.floor(count / 4));
   
   document.getElementById('polyphonyInfo').innerText = 
-    `現在: ${count + 1}音 同時発音 (1和音あたり ${bytesPerChord}バイト / ${count * 2}ビット 転送)`;
+    `現在: ${count}バンド (${bytesPerChord}バイト/150ms 転送)`;
 
   const grid = document.getElementById('matrixGrid');
   grid.innerHTML = '';
@@ -296,7 +297,7 @@ function updateMeterUI() {
 document.getElementById('polyphonySel').addEventListener('change', updateMeterUI);
 updateMeterUI();
 
-// 送信エンジン
+// --- 送信ロジック (Offline Context) ---
 let currentSourceNode = null;
 
 async function transmit() {
@@ -315,50 +316,47 @@ async function transmit() {
   const statusEl = document.getElementById('txStatus');
   const progress = document.getElementById('txProgress');
 
-  sendBtn.disabled = true;
-  stopBtn.disabled = false;
-  progress.style.display = 'block';
-  progress.value = 0;
+  sendBtn.disabled = true; stopBtn.disabled = false;
+  progress.style.display = 'block'; progress.value = 0;
   statusEl.innerText = `波形生成中... (${rawBytes.length}B)`;
 
   const totalChords = Math.ceil(rawBytes.length / bytesPerChord);
-  const totalTime = 0.2 + (totalChords * duration) + 0.1;
+  const totalTime = 0.5 + (totalChords * duration) + 0.2;
 
-  const sampleRate = 44100;
-  const offlineCtx = new OfflineAudioContext(1, Math.ceil(sampleRate * totalTime), sampleRate);
-
+  const offCtx = new OfflineAudioContext(1, Math.ceil(SAMPLE_RATE * totalTime), SAMPLE_RATE);
   let t = 0.05;
 
-  // プリアンブル
-  addMassiveBundle(offlineCtx, CLK_FREQS[0], bands.map(b => b[0]), bands, t, 0.12);
-  t += 0.13;
+  // プリアンブル (高精度の2段階同期音)
+  playTone(offCtx, binToFreq(SYNC_BIN_1), t, 0.15);
+  t += 0.15;
+  playTone(offCtx, binToFreq(SYNC_BIN_2), t, 0.15);
+  t += 0.20;
 
+  // 各データシンボルの生成
   for (let i = 0; i < totalChords; i++) {
     const chunk = rawBytes.slice(i * bytesPerChord, (i + 1) * bytesPerChord);
     while (chunk.length < bytesPerChord) chunk.push(0x00);
 
-    const clk = (i % 2 === 0) ? CLK_FREQS[0] : CLK_FREQS[1];
-    const dataFreqs = [];
-
+    const activeFreqs = [];
     for (let b = 0; b < bytesPerChord; b++) {
       const val = chunk[b];
-      dataFreqs.push(bands[b * 4 + 0][val & 0x03]);
-      dataFreqs.push(bands[b * 4 + 1][(val >> 2) & 0x03]);
-      dataFreqs.push(bands[b * 4 + 2][(val >> 4) & 0x03]);
-      dataFreqs.push(bands[b * 4 + 3][(val >> 6) & 0x03]);
+      activeFreqs.push(bands[b * 4 + 0][val & 0x03]);
+      activeFreqs.push(bands[b * 4 + 1][(val >> 2) & 0x03]);
+      activeFreqs.push(bands[b * 4 + 2][(val >> 4) & 0x03]);
+      activeFreqs.push(bands[b * 4 + 3][(val >> 6) & 0x03]);
     }
 
-    addMassiveBundle(offlineCtx, clk, dataFreqs, bands, t, duration);
+    activeFreqs.forEach(f => playTone(offCtx, f, t, duration * 0.92));
     t += duration;
 
-    if (i % 200 === 0) {
+    if (i % 100 === 0) {
       progress.value = (i / totalChords) * 50;
       await new Promise(r => setTimeout(r, 0));
     }
   }
 
   statusEl.innerText = 'レンダリング中...';
-  const renderedBuffer = await offlineCtx.startRendering();
+  const renderedBuffer = await offCtx.startRendering();
   progress.value = 100;
 
   const realCtx = getCtx();
@@ -369,8 +367,7 @@ async function transmit() {
   statusEl.innerText = `送信中 (${totalChords}和音)`;
 
   currentSourceNode.onended = () => {
-    sendBtn.disabled = false;
-    stopBtn.disabled = true;
+    sendBtn.disabled = false; stopBtn.disabled = true;
     progress.style.display = 'none';
     statusEl.innerText = '送信完了';
   };
@@ -378,25 +375,20 @@ async function transmit() {
   currentSourceNode.start();
 }
 
-function addMassiveBundle(ctx, clkFreq, dataFreqs, bands, startTime, duration) {
-  const allFreqs = [clkFreq, ...dataFreqs];
-  const masterGain = ctx.createGain();
-  const gainPerOsc = 0.8 / allFreqs.length;
+function playTone(ctx, freq, start, duration) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.frequency.value = freq;
+  
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.linearRampToValueAtTime(0.08, start + 0.004);
+  gain.gain.setValueAtTime(0.08, start + duration - 0.004);
+  gain.gain.linearRampToValueAtTime(0.0001, start + duration);
 
-  masterGain.gain.setValueAtTime(0.0001, startTime);
-  masterGain.gain.linearRampToValueAtTime(gainPerOsc, startTime + 0.004);
-  masterGain.gain.setValueAtTime(gainPerOsc, startTime + duration - 0.004);
-  masterGain.gain.linearRampToValueAtTime(0.0001, startTime + duration);
-  masterGain.connect(ctx.destination);
-
-  allFreqs.forEach(f => {
-    const osc = ctx.createOscillator();
-    osc.type = 'sine';
-    osc.frequency.value = f;
-    osc.connect(masterGain);
-    osc.start(startTime);
-    osc.stop(startTime + duration);
-  });
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(start);
+  osc.stop(start + duration);
 }
 
 document.getElementById('sendBtn').addEventListener('click', transmit);
@@ -409,31 +401,23 @@ document.getElementById('stopBtn').addEventListener('click', () => {
   }
 });
 
-// RX 受信エンジン (遅延サンプリング搭載)
+// --- RX 受信エンジン (ScriptProcessor サンプル単位高精度同期) ---
 let rxRunning = false;
 let rxStream = null;
-let hpfNode = null;
+let scriptNode = null;
 let analyser = null;
-let squelchLevel = 40;
-let hpfCutoffFreq = 550;
+let squelchLevel = -60;
 let samplingDelayRatio = 0.45;
-
 let receivedBytes = [];
-let lastClkState = null;
-let isSamplingScheduled = false;
-let scheduledSampleTime = 0;
 
-const hpfSlider = document.getElementById('hpfSlider');
-hpfSlider.addEventListener('input', (e) => {
-  hpfCutoffFreq = parseInt(e.target.value);
-  document.getElementById('hpfVal').innerText = `${hpfCutoffFreq} Hz`;
-  if (hpfNode && audioCtx) hpfNode.frequency.setValueAtTime(hpfCutoffFreq, audioCtx.currentTime);
-});
+let rxState = 'IDLE'; // IDLE -> SYNC_1 -> SYNC_2 -> DATA
+let samplesProcessed = 0;
+let nextSampleTarget = 0;
 
 const sqSlider = document.getElementById('sqSlider');
 sqSlider.addEventListener('input', (e) => {
   squelchLevel = parseInt(e.target.value);
-  document.getElementById('sqVal').innerText = squelchLevel;
+  document.getElementById('sqVal').innerText = `${squelchLevel} dB`;
 });
 
 const delaySlider = document.getElementById('delaySlider');
@@ -454,36 +438,6 @@ document.getElementById('clearBtn').addEventListener('click', () => {
   });
 });
 
-document.getElementById('autoSqBtn').addEventListener('click', async () => {
-  if (!rxRunning) await startRx();
-  const btn = document.getElementById('autoSqBtn');
-  btn.innerText = '測定中...'; btn.disabled = true;
-
-  let maxNoise = 0;
-  const start = performance.now();
-  const binCount = analyser.frequencyBinCount;
-  const freqData = new Uint8Array(binCount);
-
-  const measure = () => {
-    analyser.getByteFrequencyData(freqData);
-    const startBin = Math.round(hpfCutoffFreq / (audioCtx.sampleRate / analyser.fftSize));
-    for (let i = startBin; i < binCount; i++) {
-      if (freqData[i] > maxNoise) maxNoise = freqData[i];
-    }
-    if (performance.now() - start < 800) {
-      requestAnimationFrame(measure);
-    } else {
-      const autoVal = Math.min(150, Math.max(20, maxNoise + 15));
-      squelchLevel = autoVal;
-      sqSlider.value = autoVal;
-      document.getElementById('sqVal').innerText = autoVal;
-      btn.innerText = `完了 (${autoVal})`; btn.disabled = false;
-      setTimeout(() => { btn.innerText = '⚡ スケルチ自動調整'; }, 2000);
-    }
-  };
-  measure();
-});
-
 document.getElementById('rxBtn').addEventListener('click', async () => {
   if (rxRunning) stopRx();
   else await startRx();
@@ -497,28 +451,109 @@ async function startRx() {
     });
     const src = ctx.createMediaStreamSource(rxStream);
 
-    hpfNode = ctx.createBiquadFilter();
-    hpfNode.type = 'highpass';
-    hpfNode.frequency.value = hpfCutoffFreq;
-
     analyser = ctx.createAnalyser();
-    analyser.fftSize = 4096;
-    analyser.smoothingTimeConstant = 0.12;
+    analyser.fftSize = FFT_SIZE;
+    analyser.smoothingTimeConstant = 0.0;
 
-    src.connect(hpfNode);
-    hpfNode.connect(analyser);
+    scriptNode = ctx.createScriptProcessor(2048, 1, 1);
+
+    src.connect(analyser);
+    analyser.connect(scriptNode);
+    scriptNode.connect(ctx.destination);
 
     rxRunning = true;
-    document.getElementById('rxBtn').innerText = '⏹ マイク停止';
+    rxState = 'IDLE';
+    samplesProcessed = 0;
+    receivedBytes = [];
+
+    document.getElementById('rxBtn').innerText = '⏹ 停止';
     document.getElementById('rxBtn').className = 'btn btn-red';
+
+    const freqData = new Float32Array(analyser.frequencyBinCount);
+    const bands = getActiveBands();
+    const chordMs = parseInt(document.getElementById('durationSel').value);
+    const samplesPerSymbol = Math.round(SAMPLE_RATE * (chordMs / 1000));
+
+    scriptNode.onaudioprocess = () => {
+      if (!rxRunning) return;
+      analyser.getFloatFrequencyData(freqData);
+      samplesProcessed += 2048;
+
+      const getBinPower = (bin) => Math.max(freqData[bin-1], freqData[bin], freqData[bin+1]);
+
+      const pSync1 = getBinPower(SYNC_BIN_1);
+      const pSync2 = getBinPower(SYNC_BIN_2);
+
+      const led = document.getElementById('rxLed');
+      const rxStatus = document.getElementById('rxStatus');
+
+      // ステートマシンによるプリアンブル解析
+      if (rxState === 'IDLE') {
+        if (pSync1 > squelchLevel) {
+          rxState = 'SYNC_1';
+        }
+      } else if (rxState === 'SYNC_1') {
+        if (pSync2 > squelchLevel) {
+          rxState = 'SYNC_2';
+          nextSampleTarget = samplesProcessed + Math.round(SAMPLE_RATE * 0.18) + Math.round(samplesPerSymbol * samplingDelayRatio);
+          rxStatus.innerText = 'LOCKED (同期完了・データ受信中)';
+          rxStatus.style.color = 'var(--green)';
+          led.className = 'led open';
+        }
+      } else if (rxState === 'DATA') {
+        if (samplesProcessed >= nextSampleTarget) {
+          nextSampleTarget += samplesPerSymbol;
+
+          const bytesPerChord = Math.max(1, Math.floor(bands.length / 4));
+          const decodedChunk = [];
+          let validSignal = false;
+
+          for (let b = 0; b < bytesPerChord; b++) {
+            let chordByte = 0;
+            for (let sub = 0; sub < 4; sub++) {
+              const bandIdx = b * 4 + sub;
+              let maxP = -999;
+              let bestVal = 0;
+
+              bands[bandIdx].forEach((f, val) => {
+                const targetBin = Math.round(f / BIN_WIDTH);
+                const p = getBinPower(targetBin);
+                if (p > maxP) { maxP = p; bestVal = val; }
+              });
+
+              if (maxP > squelchLevel) validSignal = true;
+
+              const el = document.getElementById(`v${bandIdx}`);
+              if (el) el.innerText = bestVal.toString(2).padStart(2, '0');
+
+              chordByte |= (bestVal << (sub * 2));
+            }
+            decodedChunk.push(chordByte);
+          }
+
+          if (validSignal) {
+            onChunkDecoded(decodedChunk);
+          } else {
+            rxState = 'IDLE';
+            rxStatus.innerText = 'STANDBY (信号終了)';
+            rxStatus.style.color = 'var(--muted)';
+            led.className = 'led closed';
+          }
+        }
+      }
+
+      if (rxState === 'SYNC_2') rxState = 'DATA';
+    };
+
     renderSpecLoop();
   } catch (err) {
-    alert('マイク起動エラー: ' + err.message);
+    alert('マイクエラー: ' + err.message);
   }
 }
 
 function stopRx() {
   if (rxStream) rxStream.getTracks().forEach(t => t.stop());
+  if (scriptNode) scriptNode.disconnect();
   rxRunning = false;
   document.getElementById('rxBtn').innerText = '🎤 受信開始';
   document.getElementById('rxBtn').className = 'btn btn-green';
@@ -529,118 +564,22 @@ function stopRx() {
 function renderSpecLoop() {
   const canvas = document.getElementById('specCanvas');
   const ctx2d = canvas.getContext('2d');
-  const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
-  ctx2d.scale(dpr, dpr);
-
-  const binCount = analyser.frequencyBinCount;
-  const freqData = new Uint8Array(binCount);
-
-  function getMagAt(f) {
-    const bin = Math.round(f / (audioCtx.sampleRate / analyser.fftSize));
-    let m = 0;
-    for (let i = Math.max(0, bin - 1); i <= Math.min(binCount - 1, bin + 1); i++) {
-      if (freqData[i] > m) m = freqData[i];
-    }
-    return m;
-  }
+  const data = new Uint8Array(analyser.frequencyBinCount);
 
   function loop() {
     if (!rxRunning) return;
     requestAnimationFrame(loop);
 
-    analyser.getByteFrequencyData(freqData);
-
-    const w = rect.width, h = rect.height;
-    const maxF = 12500;
-    const bands = getActiveBands();
+    analyser.getByteFrequencyData(data);
+    const w = canvas.width = canvas.clientWidth;
+    const h = canvas.height = canvas.clientHeight;
 
     ctx2d.fillStyle = '#010205'; ctx2d.fillRect(0, 0, w, h);
+    ctx2d.fillStyle = '#00f0ff';
 
-    const hpfX = (hpfCutoffFreq / maxF) * w;
-    ctx2d.fillStyle = 'rgba(255, 51, 68, 0.08)'; ctx2d.fillRect(0, 0, hpfX, h);
-
-    // スペクトラム描画
-    ctx2d.beginPath(); ctx2d.strokeStyle = '#00f0ff'; ctx2d.lineWidth = 1.2;
-    for (let i = 0; i < binCount; i++) {
-      const f = i * (audioCtx.sampleRate / analyser.fftSize);
-      if (f > maxF) break;
-      const x = (f / maxF) * w;
-      const y = h - (freqData[i] / 255) * h;
-      if (i === 0) ctx2d.moveTo(x, y); else ctx2d.lineTo(x, y);
-    }
-    ctx2d.stroke();
-
-    // スケルチ線
-    const sqY = h - (squelchLevel / 255) * h;
-    ctx2d.strokeStyle = '#ff3344'; ctx2d.setLineDash([4, 4]);
-    ctx2d.beginPath(); ctx2d.moveTo(0, sqY); ctx2d.lineTo(w, sqY); ctx2d.stroke(); ctx2d.setLineDash([]);
-
-    // クロック判定
-    const magA = getMagAt(CLK_FREQS[0]);
-    const magB = getMagAt(CLK_FREQS[1]);
-    const clkOpen = (Math.max(magA, magB) >= squelchLevel);
-    const activeClk = (magA > magB) ? 0 : 1;
-
-    // ピーク探索
-    const bandHits = bands.map(b => {
-      let best = 0, maxM = 0;
-      b.forEach((f, idx) => {
-        const m = getMagAt(f);
-        if (m > maxM) { maxM = m; best = idx; }
-      });
-      return { idx: best, mag: maxM };
-    });
-
-    const led = document.getElementById('rxLed');
-    const rxStatus = document.getElementById('rxStatus');
-
-    if (clkOpen) {
-      led.className = 'led open';
-      rxStatus.innerText = `LOCKED [CLK ${activeClk === 0 ? '650Hz' : '770Hz'}]`;
-      rxStatus.style.color = 'var(--green)';
-
-      bandHits.forEach((hit, i) => {
-        const el = document.getElementById(`v${i}`);
-        if (el) el.innerText = hit.idx.toString(2).padStart(2, '0');
-      });
-
-      const now = performance.now();
-      const chordMs = parseInt(document.getElementById('durationSel').value);
-
-      if (lastClkState !== null && lastClkState !== activeClk) {
-        isSamplingScheduled = true;
-        scheduledSampleTime = now + (chordMs * samplingDelayRatio);
-      }
-      lastClkState = activeClk;
-
-      if (isSamplingScheduled && now >= scheduledSampleTime) {
-        isSamplingScheduled = false;
-
-        ctx2d.fillStyle = 'rgba(0, 255, 119, 0.2)';
-        ctx2d.fillRect(0, 0, w, h);
-
-        const bytesPerChord = Math.max(1, Math.floor(bands.length / 4));
-        const decodedChords = [];
-
-        for (let b = 0; b < bytesPerChord; b++) {
-          const s0 = bandHits[b * 4 + 0].idx;
-          const s1 = bandHits[b * 4 + 1].idx;
-          const s2 = bandHits[b * 4 + 2].idx;
-          const s3 = bandHits[b * 4 + 3].idx;
-          const byteVal = (s3 << 6) | (s2 << 4) | (s1 << 2) | s0;
-          decodedChords.push(byteVal);
-        }
-
-        onChunkDecoded(decodedChords);
-      }
-    } else {
-      led.className = 'led closed';
-      rxStatus.innerText = 'SQUELCH CLOSED';
-      rxStatus.style.color = 'var(--muted)';
-      lastClkState = null;
-      isSamplingScheduled = false;
+    for (let i = 0; i < data.length; i++) {
+      const barHeight = (data[i] / 255) * h;
+      ctx2d.fillRect(i * 2, h - barHeight, 1.5, barHeight);
     }
   }
   loop();
@@ -656,7 +595,7 @@ function onChunkDecoded(byteArr) {
   try {
     const text = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(cleanBytes));
     if (text.startsWith('data:image/')) {
-      document.getElementById('rxText').innerText = '[画像データ受信完了]';
+      document.getElementById('rxText').innerText = '[画像データ受信中/完了]';
       const imgRes = document.getElementById('rxImgResult');
       imgRes.src = text;
       imgRes.style.display = 'block';
