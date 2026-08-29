@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Turbo Multi-Carrier Modem (Sync Fix)</title>
+  <title>High-Speed Multi-Carrier Modem (Variable Carriers)</title>
   <style>
     :root {
       --bg: #080c14;
@@ -23,56 +23,48 @@
     .app { width: 100%; max-width: 1100px; display: flex; flex-direction: column; gap: 16px; }
 
     header { text-align: center; border-bottom: 2px solid var(--border); padding-bottom: 12px; }
-    header h1 { font-size: 1.6rem; color: var(--cyan); letter-spacing: 2px; text-shadow: 0 0 12px rgba(0, 240, 255, 0.4); }
-    header p { color: var(--muted); font-size: 0.82rem; margin-top: 4px; }
+    header h1 { font-size: 1.5rem; color: var(--cyan); letter-spacing: 1px; }
 
     .grid { display: grid; grid-template-columns: 1fr 1.15fr; gap: 16px; }
     @media (max-width: 850px) { .grid { grid-template-columns: 1fr; } }
 
-    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px; box-shadow: 0 6px 24px rgba(0,0,0,0.6); }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
     .card-title { font-size: 1rem; font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; border-left: 4px solid var(--cyan); padding-left: 8px; }
     .card-title.rx { border-left-color: var(--green); }
 
     textarea { width: 100%; background: #050811; border: 1px solid #23324d; color: var(--cyan); padding: 10px; border-radius: 4px; font-size: 0.95rem; resize: vertical; }
-    textarea:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 8px rgba(0,240,255,0.3); }
 
-    .btn { background: #1e293b; color: var(--text); border: 1px solid #334155; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem; transition: all 0.2s; }
+    .btn { background: #1e293b; color: var(--text); border: 1px solid #334155; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem; }
     .btn:hover { background: #334155; }
     .btn-cyan { background: #006680; border-color: var(--cyan); color: #fff; }
-    .btn-cyan:hover { background: #0088aa; box-shadow: 0 0 10px rgba(0,240,255,0.4); }
     .btn-green { background: #006633; border-color: var(--green); color: #fff; }
-    .btn-green:hover { background: #008844; box-shadow: 0 0 10px rgba(0,255,102,0.4); }
     .btn-red { background: #881122; border-color: var(--red); color: #fff; }
-    .btn-red:hover { background: #aa1133; }
     .btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
     .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
-    select, input[type="file"] { background: #050811; color: #fff; border: 1px solid #23324d; padding: 6px 10px; border-radius: 4px; font-size: 0.85rem; }
+    select, input[type="file"], input[type="number"] { background: #050811; color: #fff; border: 1px solid #23324d; padding: 6px 10px; border-radius: 4px; font-size: 0.85rem; }
 
     .spec-wrap { position: relative; background: #03050a; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-top: 8px; }
     canvas { display: block; width: 100%; height: 180px; }
 
-    .vu-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 8px; background: #050811; padding: 6px; border-radius: 4px; border: 1px solid var(--border); }
-    .vu-ch { text-align: center; font-size: 0.7rem; color: var(--muted); border: 1px solid #1a2333; padding: 4px 2px; border-radius: 3px; }
-    .vu-val { font-weight: bold; font-size: 0.8rem; margin-top: 2px; }
-
     .squelch-box { margin-top: 8px; background: #070b14; padding: 8px 12px; border-radius: 4px; border: 1px solid var(--border); }
-    .squelch-hdr { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px; }
     input[type="range"] { width: 100%; accent-color: var(--yellow); cursor: pointer; }
 
     .led { width: 10px; height: 10px; border-radius: 50%; background: #333; display: inline-block; }
     .led.open { background: var(--green); box-shadow: 0 0 8px var(--green); }
     .led.closed { background: var(--red); }
 
-    .out-box { background: #04060c; border: 1px solid #1a2333; padding: 8px; min-height: 50px; max-height: 90px; overflow-y: auto; border-radius: 4px; word-break: break-all; font-size: 0.9rem; margin-top: 6px; }
+    .out-box { background: #04060c; border: 1px solid #1a2333; padding: 8px; min-height: 50px; max-height: 90px; overflow-y: auto; border-radius: 4px; word-break: break-all; font-size: 0.85rem; margin-top: 6px; }
     .out-text { color: var(--green); }
     .out-hex { color: var(--muted); font-size: 0.75rem; }
 
     .img-preview { max-width: 100%; max-height: 180px; margin-top: 8px; border-radius: 4px; border: 1px solid var(--border); display: none; }
-    .stats-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; background: #131d2e; padding: 3px 8px; border-radius: 3px; color: var(--cyan); }
+    .stats-badge { font-size: 0.75rem; background: #131d2e; padding: 4px 8px; border-radius: 3px; color: var(--cyan); }
     
     .tab-btn { padding: 4px 10px; font-size: 0.75rem; background: #162032; border: 1px solid var(--border); color: var(--text); cursor: pointer; border-radius: 4px 4px 0 0; }
     .tab-btn.active { background: var(--cyan); color: #000; font-weight: bold; }
+
+    progress { width: 100%; height: 8px; margin-top: 6px; accent-color: var(--cyan); }
   </style>
 </head>
 <body>
@@ -80,51 +72,57 @@
 <div class="app">
   <header>
     <h1>TURBO MULTI-CARRIER MODEM</h1>
-    <p>5波同時合成（パラレル4-FSK＋同期クロック）＋同期補正バッファ</p>
+    <p>可変キャリア（5 / 10 / 20 / 25波）+ 高速ストリーミング合成</p>
   </header>
 
   <div class="grid">
-    <!-- TX 送信側 -->
+    <!-- TX 送信機 -->
     <div class="card">
-      <div class="card-title">📡 複合音 送信機 (5-Tone TX)</div>
+      <div class="card-title">📡 複合音 送信機 (TX)</div>
       
       <div style="display:flex; gap:4px; margin-bottom:8px;">
         <button id="tabText" class="tab-btn active">テキスト送信</button>
-        <button id="tabImg" class="tab-btn">画像送信 (最大3MB)</button>
+        <button id="tabImg" class="tab-btn">画像送信</button>
       </div>
 
       <div id="textModeGroup">
-        <label style="font-size:0.75rem; color:var(--muted);">送信テキスト:</label>
-        <textarea id="txInput" rows="4">コンピュータ</textarea>
+        <textarea id="txInput" rows="3">コンピュータ</textarea>
       </div>
 
       <div id="imgModeGroup" style="display:none;">
-        <label style="font-size:0.75rem; color:var(--muted);">送信画像ファイル (上限3MB):</label>
-        <input type="file" id="imgInput" accept="image/*" style="width:100%; margin-top:4px;">
+        <input type="file" id="imgInput" accept="image/*" style="width:100%;">
         <img id="txImgPreview" class="img-preview">
         <div id="imgSizeWarn" style="font-size:0.75rem; color:var(--yellow); margin-top:4px;"></div>
       </div>
 
       <div class="row" style="margin-top:10px;">
-        <label style="font-size:0.8rem; color:var(--muted);">伝送速度:</label>
-        <select id="speedSel">
-          <option value="turbo">⚡ 超高速 Turbo (35ms/byte)</option>
-          <option value="fast" selected>🚀 高速 Fast (50ms/byte)</option>
-          <option value="normal">🚗 標準 Normal (80ms/byte)</option>
-          <option value="slow">🛡 安定 Slow (120ms/byte)</option>
+        <label style="font-size:0.8rem; color:var(--muted);">キャリア数:</label>
+        <select id="carrierSel">
+          <option value="5" selected>5波 (4 Data + 1 CLK / 1B/slot)</option>
+          <option value="10">10波 (9 Data + 1 CLK / 2B/slot)</option>
+          <option value="20">20波 (19 Data + 1 CLK / 4B/slot)</option>
+          <option value="25">25波 (24 Data + 1 CLK / 6B/slot)</option>
         </select>
       </div>
 
-      <div class="row" style="margin-top:12px;">
-        <button id="sendBtn" class="btn btn-cyan">▶ 事前合成 & 送信開始</button>
-        <button id="stopBtn" class="btn btn-red" disabled>■ 中断</button>
-        <span id="txStats" class="stats-badge" style="display:none;">READY</span>
+      <div class="row">
+        <label style="font-size:0.8rem; color:var(--muted);">1スロット長 (ms):</label>
+        <input type="number" id="slotMsInput" value="30" min="5" max="300" style="width:70px;">
+        <span style="font-size:0.75rem; color:var(--muted);"> (推薦: 5〜50ms)</span>
       </div>
+
+      <progress id="txProgress" value="0" max="100" style="display:none;"></progress>
+
+      <div class="row" style="margin-top:12px;">
+        <button id="sendBtn" class="btn btn-cyan">▶ 音声合成 & 送信開始</button>
+        <button id="stopBtn" class="btn btn-red" disabled>■ 中断</button>
+      </div>
+      <div style="margin-top:6px;"><span id="txStats" class="stats-badge">READY</span></div>
     </div>
 
-    <!-- RX 受信側 -->
+    <!-- RX 受信機 -->
     <div class="card">
-      <div class="card-title rx">👂 リアルタイム・マルチスペアナ (RX)</div>
+      <div class="card-title rx">👂 スペクトラムアナライザ (RX)</div>
 
       <div class="row">
         <button id="rxBtn" class="btn btn-green">🎤 マイク受信開始</button>
@@ -139,26 +137,18 @@
         <canvas id="specCanvas"></canvas>
       </div>
 
-      <div class="vu-grid">
-        <div class="vu-ch" id="vuClk"><span style="color:var(--cyan)">CLK</span><div class="vu-val" id="vuClkVal">-</div></div>
-        <div class="vu-ch" id="vuB1"><span style="color:var(--green)">B1</span><div class="vu-val" id="vuB1Val">-</div></div>
-        <div class="vu-ch" id="vuB2"><span style="color:var(--yellow)">B2</span><div class="vu-val" id="vuB2Val">-</div></div>
-        <div class="vu-ch" id="vuB3"><span style="color:#ff8800">B3</span><div class="vu-val" id="vuB3Val">-</div></div>
-        <div class="vu-ch" id="vuB4"><span style="color:var(--magenta)">B4</span><div class="vu-val" id="vuB4Val">-</div></div>
-      </div>
-
       <div class="squelch-box">
-        <div class="squelch-hdr">
-          <span>スケルチ (Squelch Level):</span>
-          <span id="sqVal" style="color:var(--yellow); font-weight:bold;">110</span>
+        <div style="display:flex; justify-content:space-between; font-size:0.8rem;">
+          <span>スケルチ感度:</span>
+          <span id="sqVal" style="color:var(--yellow); font-weight:bold;">100</span>
         </div>
-        <input type="range" id="sqSlider" min="20" max="230" value="110">
+        <input type="range" id="sqSlider" min="10" max="230" value="100">
       </div>
 
       <label style="font-size:0.75rem; color:var(--muted); margin-top:8px; display:block;">受信生データ (HEX):</label>
       <div id="rxHex" class="out-box out-hex">---</div>
 
-      <label style="font-size:0.75rem; color:var(--muted); margin-top:4px; display:block;">復号結果 (Decoded Result):</label>
+      <label style="font-size:0.75rem; color:var(--muted); margin-top:4px; display:block;">復号結果:</label>
       <div id="rxText" class="out-box out-text"></div>
       <img id="rxImgResult" class="img-preview">
     </div>
@@ -166,14 +156,17 @@
 </div>
 
 <script>
-const CLK_FREQS = [400, 500];
-const BANDS = [
-  [700, 800, 900, 1000],
-  [1200, 1300, 1400, 1500],
-  [1700, 1800, 1900, 2000],
-  [2200, 2300, 2400, 2500]
-];
-const BAND_COLORS = ['#00ff66', '#ffd700', '#ff8800', '#ff007f'];
+// ベース周波数設定 (CLK 200/300Hz, データバンド 400Hz〜, 1バンドあたり4周波数 / 100Hzステップ)
+const CLK_FREQS = [250, 350];
+function generateBands(count) {
+  const bands = [];
+  let startF = 500;
+  for (let i = 0; i < count; i++) {
+    bands.push([startF, startF + 40, startF + 80, startF + 120]);
+    startF += 180;
+  }
+  return bands;
+}
 
 let audioCtx = null;
 function getCtx() {
@@ -190,18 +183,14 @@ const imgModeGroup = document.getElementById('imgModeGroup');
 
 tabText.onclick = () => {
   sendMode = 'text';
-  tabText.classList.add('active');
-  tabImg.classList.remove('active');
-  textModeGroup.style.display = 'block';
-  imgModeGroup.style.display = 'none';
+  tabText.classList.add('active'); tabImg.classList.remove('active');
+  textModeGroup.style.display = 'block'; imgModeGroup.style.display = 'none';
 };
 
 tabImg.onclick = () => {
   sendMode = 'image';
-  tabImg.classList.add('active');
-  tabText.classList.remove('active');
-  textModeGroup.style.display = 'none';
-  imgModeGroup.style.display = 'block';
+  tabImg.classList.add('active'); tabText.classList.remove('active');
+  textModeGroup.style.display = 'none'; imgModeGroup.style.display = 'block';
 };
 
 let preparedImgDataUrl = null;
@@ -209,15 +198,7 @@ document.getElementById('imgInput').addEventListener('change', (e) => {
   const file = e.target.files[0];
   const warn = document.getElementById('imgSizeWarn');
   const preview = document.getElementById('txImgPreview');
-  
   if (!file) return;
-  if (file.size > 3 * 1024 * 1024) {
-    warn.innerText = '⚠️ ファイルサイズが3MBを超えています。';
-    preview.style.display = 'none';
-    preparedImgDataUrl = null;
-    return;
-  }
-
   warn.innerText = `ファイルサイズ: ${(file.size / 1024).toFixed(1)} KB`;
   const reader = new FileReader();
   reader.onload = (evt) => {
@@ -231,100 +212,122 @@ document.getElementById('imgInput').addEventListener('change', (e) => {
 let currentSourceNode = null;
 
 async function generateAndTransmit() {
-  const speed = document.getElementById('speedSel').value;
-  let slotMs = 50;
-  if (speed === 'turbo') slotMs = 35;
-  if (speed === 'normal') slotMs = 80;
-  if (speed === 'slow') slotMs = 120;
+  const carrierCount = parseInt(document.getElementById('carrierSel').value);
+  const dataBandCount = carrierCount - 1; // 1波はクロック用
+  const bands = generateBands(dataBandCount);
+  const slotMs = parseInt(document.getElementById('slotMsInput').value) || 30;
+  const duration = slotMs / 1000;
 
-  let payload = '';
-  if (sendMode === 'text') payload = document.getElementById('txInput').value;
-  else {
-    if (!preparedImgDataUrl) { alert('画像を選択してください'); return; }
-    payload = preparedImgDataUrl;
-  }
-
-  if (!payload) return;
+  let payload = sendMode === 'text' ? document.getElementById('txInput').value : preparedImgDataUrl;
+  if (!payload) { alert('送信データがありません'); return; }
 
   const bytes = new TextEncoder().encode(payload);
   const sendBtn = document.getElementById('sendBtn');
   const stopBtn = document.getElementById('stopBtn');
   const stats = document.getElementById('txStats');
+  const progress = document.getElementById('txProgress');
 
   sendBtn.disabled = true;
-  stats.style.display = 'inline-flex';
-  stats.innerText = 'RENDERING...';
+  progress.style.display = 'block';
+  progress.value = 0;
+  stats.innerText = `音声波形を計算中... (全 ${bytes.length} B)`;
 
-  const duration = slotMs / 1000;
-  // プリアンブル構成: AGC安定(300ms) + 同期切り替えパルス4個 (4 * duration)
-  const preambleTime = 0.3 + (4 * duration);
-  const totalTime = preambleTime + bytes.length * duration + 0.2;
+  // 1スロットあたり送信できるバイト数 (2bit * dataBandCount)
+  const bytesPerSlot = Math.floor((dataBandCount * 2) / 8) || 1;
+  const totalSlots = Math.ceil(bytes.length / bytesPerSlot);
+
+  const preambleTime = 0.2 + (4 * duration);
+  const totalTime = preambleTime + (totalSlots * duration) + 0.1;
 
   const sampleRate = 44100;
   const offlineCtx = new OfflineAudioContext(1, Math.ceil(sampleRate * totalTime), sampleRate);
 
   let t = 0.05;
 
-  // 1. AGCアライメント（ダミー全周波数出力）
-  addToneBundleToOffline(offlineCtx, 400, [700, 1200, 1700, 2200], t, 0.3);
-  t += 0.32;
-
-  // 2. クロック同期パルス（CLK_FREQS[1] -> CLK_FREQS[0] で本データ直前をCLK_FREQS[1]にアライン）
-  addToneBundleToOffline(offlineCtx, CLK_FREQS[0], [700, 1200, 1700, 2200], t, duration); t += duration;
-  addToneBundleToOffline(offlineCtx, CLK_FREQS[1], [700, 1200, 1700, 2200], t, duration); t += duration;
-  addToneBundleToOffline(offlineCtx, CLK_FREQS[0], [700, 1200, 1700, 2200], t, duration); t += duration;
-  addToneBundleToOffline(offlineCtx, CLK_FREQS[1], [700, 1200, 1700, 2200], t, duration); t += duration;
-
-  // 3. 本データ送信 (i=0は CLK_FREQS[0] からスタートするため確実にトグルする)
-  for (let i = 0; i < bytes.length; i++) {
-    const b = bytes[i];
-    const clkFreq = (i % 2 === 0) ? CLK_FREQS[0] : CLK_FREQS[1];
-
-    const f1 = BANDS[0][b & 0x03];
-    const f2 = BANDS[1][(b >> 2) & 0x03];
-    const f3 = BANDS[2][(b >> 4) & 0x03];
-    const f4 = BANDS[3][(b >> 6) & 0x03];
-
-    addToneBundleToOffline(offlineCtx, clkFreq, [f1, f2, f3, f4], t, duration);
+  // プリアンブル (同期確立用)
+  const dummyData = Array(dataBandCount).fill(0);
+  addToneBundle(offlineCtx, CLK_FREQS[0], dummyData, bands, t, 0.15); t += 0.16;
+  for (let p = 0; p < 4; p++) {
+    addToneBundle(offlineCtx, CLK_FREQS[p % 2], dummyData, bands, t, duration);
     t += duration;
   }
 
+  // 本データブロックの展開
+  let byteIdx = 0;
+  for (let slot = 0; slot < totalSlots; slot++) {
+    const clkFreq = (slot % 2 === 0) ? CLK_FREQS[0] : CLK_FREQS[1];
+    const slotBands = [];
+
+    // 各バンドに2bitずつマッピング
+    let currentBitPos = 0;
+    let tempVal = 0;
+    for (let b = 0; b < dataBandCount; b++) {
+      if (currentBitPos === 0 && byteIdx < bytes.length) {
+        tempVal = bytes[byteIdx++];
+      }
+      const val2bit = (tempVal >> currentBitPos) & 0x03;
+      slotBands.push(val2bit);
+      currentBitPos = (currentBitPos + 2) % 8;
+    }
+
+    addToneBundle(offlineCtx, clkFreq, slotBands, bands, t, duration);
+    t += duration;
+
+    if (slot % 500 === 0) {
+      progress.value = (slot / totalSlots) * 50;
+      await new Promise(r => setTimeout(r, 0)); // UIスレッドを解放
+    }
+  }
+
+  stats.innerText = 'オーディオレンダリング中...';
   const renderedBuffer = await offlineCtx.startRendering();
+  progress.value = 100;
+
   const realCtx = getCtx();
   currentSourceNode = realCtx.createBufferSource();
   currentSourceNode.buffer = renderedBuffer;
   currentSourceNode.connect(realCtx.destination);
 
   stopBtn.disabled = false;
-  stats.innerText = `PLAYING (${bytes.length} Bytes)`;
+  stats.innerText = `送信中 [${carrierCount}波 / ${slotMs}ms/スロット / 全 ${totalSlots} スロット]`;
 
   currentSourceNode.onended = () => {
     sendBtn.disabled = false;
     stopBtn.disabled = true;
-    stats.innerText = 'COMPLETE';
+    progress.style.display = 'none';
+    stats.innerText = '送信完了 (COMPLETE)';
   };
 
   currentSourceNode.start();
 }
 
-function addToneBundleToOffline(ctx, clkFreq, dataFreqs, startTime, duration) {
-  const allFreqs = [clkFreq, ...dataFreqs];
+function addToneBundle(ctx, clkFreq, bandValues, bands, startTime, duration) {
   const masterGain = ctx.createGain();
-
   masterGain.gain.setValueAtTime(0.0001, startTime);
-  masterGain.gain.linearRampToValueAtTime(0.18, startTime + 0.003);
-  masterGain.gain.setValueAtTime(0.18, startTime + duration - 0.003);
+  masterGain.gain.linearRampToValueAtTime(0.12, startTime + 0.002);
+  masterGain.gain.setValueAtTime(0.12, startTime + duration - 0.002);
   masterGain.gain.linearRampToValueAtTime(0.0001, startTime + duration);
   masterGain.connect(ctx.destination);
 
-  allFreqs.forEach(freq => {
+  // CLK Oscillator
+  const oscClk = ctx.createOscillator();
+  oscClk.type = 'sine';
+  oscClk.frequency.value = clkFreq;
+  oscClk.connect(masterGain);
+  oscClk.start(startTime);
+  oscClk.stop(startTime + duration);
+
+  // Data Oscillators
+  for (let i = 0; i < bandValues.length; i++) {
+    const val = bandValues[i];
+    const freq = bands[i][val];
     const osc = ctx.createOscillator();
     osc.type = 'sine';
     osc.frequency.value = freq;
     osc.connect(masterGain);
     osc.start(startTime);
     osc.stop(startTime + duration);
-  });
+  }
 }
 
 document.getElementById('sendBtn').addEventListener('click', generateAndTransmit);
@@ -333,30 +336,25 @@ document.getElementById('stopBtn').addEventListener('click', () => {
     currentSourceNode.stop();
     document.getElementById('sendBtn').disabled = false;
     document.getElementById('stopBtn').disabled = true;
-    document.getElementById('txStats').innerText = 'STOPPED';
+    document.getElementById('txStats').innerText = '送信中断';
   }
 });
 
-// RX 受信処理
+// RX 受信部 (アナライザ機能のみ・可視化対応)
 let rxRunning = false;
 let rxStream = null;
 let analyser = null;
-let squelchLevel = 110;
-
+let squelchLevel = 100;
 let receivedBytes = [];
-let lastClkState = null;
-let lastClkChangeTime = 0;
 
 const sqSlider = document.getElementById('sqSlider');
-const sqValDisplay = document.getElementById('sqVal');
 sqSlider.addEventListener('input', (e) => {
   squelchLevel = parseInt(e.target.value);
-  sqValDisplay.innerText = squelchLevel;
+  document.getElementById('sqVal').innerText = squelchLevel;
 });
 
 document.getElementById('clearBtn').addEventListener('click', () => {
   receivedBytes = [];
-  lastClkState = null;
   document.getElementById('rxHex').innerText = '---';
   document.getElementById('rxText').innerText = '';
   const imgRes = document.getElementById('rxImgResult');
@@ -378,7 +376,7 @@ async function startRx() {
     const src = ctx.createMediaStreamSource(rxStream);
     analyser = ctx.createAnalyser();
     analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0.12;
+    analyser.smoothingTimeConstant = 0.1;
     src.connect(analyser);
 
     rxRunning = true;
@@ -411,52 +409,27 @@ function renderSpecLoop() {
   const binCount = analyser.frequencyBinCount;
   const freqData = new Uint8Array(binCount);
 
-  function getMagAt(f) {
-    const bin = Math.round(f / (audioCtx.sampleRate / analyser.fftSize));
-    let m = 0;
-    for (let i = Math.max(0, bin - 1); i <= Math.min(binCount - 1, bin + 1); i++) {
-      if (freqData[i] > m) m = freqData[i];
-    }
-    return m;
-  }
-
   function loop() {
     if (!rxRunning) return;
     requestAnimationFrame(loop);
 
     analyser.getByteFrequencyData(freqData);
-
-    const w = rect.width;
-    const h = rect.height;
-    const maxF = 2800;
+    const w = rect.width, h = rect.height;
+    const maxF = 7000;
 
     ctx2d.fillStyle = '#03050a';
     ctx2d.fillRect(0, 0, w, h);
 
-    ctx2d.strokeStyle = '#101a2c';
-    ctx2d.lineWidth = 1;
-    for (let f = 500; f < maxF; f += 500) {
-      const x = (f / maxF) * w;
-      ctx2d.beginPath(); ctx2d.moveTo(x, 0); ctx2d.lineTo(x, h); ctx2d.stroke();
-      ctx2d.fillStyle = '#2d4160';
-      ctx2d.font = '9px monospace';
-      ctx2d.fillText(f + 'Hz', x + 2, h - 4);
-    }
-
     ctx2d.beginPath();
     ctx2d.strokeStyle = '#00f0ff';
-    ctx2d.fillStyle = 'rgba(0, 240, 255, 0.12)';
-    ctx2d.lineWidth = 1.5;
-    ctx2d.moveTo(0, h);
+    ctx2d.lineWidth = 1.2;
     for (let i = 0; i < binCount; i++) {
       const f = i * (audioCtx.sampleRate / analyser.fftSize);
       if (f > maxF) break;
       const x = (f / maxF) * w;
       const y = h - (freqData[i] / 255) * h;
-      ctx2d.lineTo(x, y);
+      if (i === 0) ctx2d.moveTo(x, y); else ctx2d.lineTo(x, y);
     }
-    ctx2d.lineTo(w, h);
-    ctx2d.fill();
     ctx2d.stroke();
 
     const sqY = h - (squelchLevel / 255) * h;
@@ -464,98 +437,8 @@ function renderSpecLoop() {
     ctx2d.setLineDash([4, 4]);
     ctx2d.beginPath(); ctx2d.moveTo(0, sqY); ctx2d.lineTo(w, sqY); ctx2d.stroke();
     ctx2d.setLineDash([]);
-
-    const magClkA = getMagAt(CLK_FREQS[0]);
-    const magClkB = getMagAt(CLK_FREQS[1]);
-    const maxClkMag = Math.max(magClkA, magClkB);
-    const clkDetected = (maxClkMag >= squelchLevel);
-    const activeClkIdx = (magClkA > magClkB) ? 0 : 1;
-
-    const bandResults = [];
-    for (let b = 0; b < 4; b++) {
-      let bestIdx = 0, maxM = 0;
-      for (let i = 0; i < 4; i++) {
-        const m = getMagAt(BANDS[b][i]);
-        if (m > maxM) { maxM = m; bestIdx = i; }
-      }
-      bandResults.push({ idx: bestIdx, mag: maxM });
-    }
-
-    CLK_FREQS.forEach((f, idx) => {
-      const x = (f / maxF) * w;
-      const isPeak = (clkDetected && activeClkIdx === idx);
-      ctx2d.strokeStyle = isPeak ? '#00f0ff' : 'rgba(0, 240, 255, 0.2)';
-      ctx2d.lineWidth = isPeak ? 2.5 : 1;
-      ctx2d.beginPath(); ctx2d.moveTo(x, 0); ctx2d.lineTo(x, h); ctx2d.stroke();
-    });
-
-    for (let b = 0; b < 4; b++) {
-      BANDS[b].forEach((f, idx) => {
-        const x = (f / maxF) * w;
-        const isPeak = (clkDetected && bandResults[b].idx === idx && bandResults[b].mag >= squelchLevel * 0.8);
-        ctx2d.strokeStyle = isPeak ? BAND_COLORS[b] : 'rgba(255, 255, 255, 0.12)';
-        ctx2d.lineWidth = isPeak ? 2 : 1;
-        ctx2d.beginPath(); ctx2d.moveTo(x, 0); ctx2d.lineTo(x, h); ctx2d.stroke();
-      });
-    }
-
-    const led = document.getElementById('rxLed');
-    const rxStatus = document.getElementById('rxStatus');
-
-    if (clkDetected) {
-      led.className = 'led open';
-      rxStatus.innerText = `SYNC LOCK [CLK ${activeClkIdx === 0 ? 'A (400Hz)' : 'B (500Hz)'}]`;
-      rxStatus.style.color = 'var(--green)';
-
-      document.getElementById('vuClkVal').innerText = activeClkIdx === 0 ? '400' : '500';
-      document.getElementById('vuB1Val').innerText = BANDS[0][bandResults[0].idx];
-      document.getElementById('vuB2Val').innerText = BANDS[1][bandResults[1].idx];
-      document.getElementById('vuB3Val').innerText = BANDS[2][bandResults[2].idx];
-      document.getElementById('vuB4Val').innerText = BANDS[3][bandResults[3].idx];
-
-      const now = performance.now();
-      // クロックのトグル（反転）を検出した瞬間だけ復号処理を実行
-      if (lastClkState !== null && lastClkState !== activeClkIdx && (now - lastClkChangeTime > 15)) {
-        const b0_1 = bandResults[0].idx;
-        const b2_3 = bandResults[1].idx;
-        const b4_5 = bandResults[2].idx;
-        const b6_7 = bandResults[3].idx;
-        const decodedByte = (b6_7 << 6) | (b4_5 << 4) | (b2_3 << 2) | b0_1;
-
-        onByteReceived(decodedByte);
-        lastClkChangeTime = now;
-      }
-      lastClkState = activeClkIdx;
-    } else {
-      led.className = 'led closed';
-      rxStatus.innerText = 'SQUELCH CLOSED';
-      rxStatus.style.color = 'var(--muted)';
-      // スケルチ切断時は状態をクリア
-      lastClkState = null;
-    }
   }
-
   loop();
-}
-
-function onByteReceived(b) {
-  receivedBytes.push(b);
-  const hexStr = receivedBytes.slice(-30).map(x => x.toString(16).padStart(2, '0').toUpperCase()).join(' ');
-  document.getElementById('rxHex').innerText = `[Total: ${receivedBytes.length}B] ${hexStr}`;
-
-  try {
-    const decodedStr = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(receivedBytes));
-    if (decodedStr.startsWith('data:image/')) {
-      document.getElementById('rxText').innerText = '[画像データ受信中 / 完了]';
-      const imgRes = document.getElementById('rxImgResult');
-      imgRes.src = decodedStr;
-      imgRes.style.display = 'block';
-    } else {
-      document.getElementById('rxText').innerText = decodedStr;
-    }
-  } catch (e) {
-    console.warn(e);
-  }
 }
 </script>
 </body>
