@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rock-Solid 128-Band Acoustic Modem</title>
+  <title>Rock-Solid 128-Band Acoustic Modem + SSTV (Export/Import対応)</title>
   <style>
     :root {
       --bg: #030509;
@@ -59,8 +59,7 @@
     }
     .card-title.rx { border-left-color: var(--green); }
 
-    /* タブ */
-    .tab-row { display: flex; gap: 6px; margin-bottom: 8px; }
+    .tab-row { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
     .tab-btn {
       background: #0d1629;
       border: 1px solid #1c2b47;
@@ -78,6 +77,7 @@
       color: #fff;
       box-shadow: 0 0 8px rgba(0,240,255,0.3);
     }
+    .tab-btn.active.rxmode { background: #4a1d73; border-color: var(--purple); }
 
     textarea {
       width: 100%;
@@ -124,6 +124,10 @@
     .btn-red { background: #6e101d; border-color: var(--red); color: #fff; }
     .btn-red:hover { background: #991428; }
     .btn-auto { background: #4a3800; border-color: var(--yellow); color: #fff; }
+    .btn-purple { background: #3a1a5c; border-color: var(--purple); color: #fff; }
+    .btn-purple:hover { background: #52258a; box-shadow: 0 0 10px rgba(170,68,255,0.4); }
+    .btn-orange { background: #6e4a00; border-color: var(--orange); color: #fff; }
+    .btn-orange:hover { background: #9a6600; }
     .btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
     .row { display: flex; gap: 8px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
@@ -146,7 +150,6 @@
     }
     canvas { display: block; width: 100%; height: 210px; }
 
-    /* 高密度マトリクスLEDモニター */
     .matrix-wrap {
       margin-top: 6px;
       background: #020308;
@@ -204,7 +207,6 @@
     .out-text { color: var(--green); }
     .out-hex { color: var(--muted); font-size: 0.7rem; }
 
-    /* ファイル受信パネル */
     .file-progress-card {
       background: #061120;
       border: 1px solid var(--cyan);
@@ -258,14 +260,66 @@
       font-weight: bold;
       margin-top: 4px;
     }
+
+    .sstv-mode-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .sstv-mode-opt {
+      flex: 1;
+      min-width: 220px;
+      background: #040710;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      cursor: pointer;
+      font-size: 0.72rem;
+      color: var(--muted);
+      transition: all 0.2s;
+    }
+    .sstv-mode-opt:hover { border-color: var(--purple); }
+    .sstv-mode-opt input { accent-color: var(--purple); margin-right: 4px; }
+    .sstv-mode-opt .opt-title { color: var(--text); font-weight: bold; font-size: 0.78rem; display: block; margin-bottom: 2px; }
+    .sstv-preview-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-top: 6px;
+    }
+    #sstvPreviewCanvas {
+      width: 110px; height: 82px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: #000;
+    }
+    #sstvCanvasWrap canvas#sstvCanvas {
+      height: auto;
+    }
+
+    .export-import-row {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+    }
+    .export-import-row .btn {
+      flex: 0 1 auto;
+    }
+    #importPlaybackVolume {
+      width: 80px;
+    }
   </style>
 </head>
 <body>
 
 <div class="app">
   <header>
-    <h1>ROCK-SOLID 128-BAND ACOUSTIC MODEM</h1>
-    <p>常駐型オシレーター・プール（音切れゼロ） ＆ ファイル・画像リアルタイム伝送</p>
+    <h1>ROCK-SOLID 128-BAND ACOUSTIC MODEM + SSTV</h1>
+    <p>常駐型オシレーター・プール（音切れゼロ） ＆ ファイル・画像・SSTVリアルタイム伝送</p>
   </header>
 
   <div class="grid">
@@ -274,8 +328,9 @@
       <div class="card-title">📡 極大多重 送信機 (TX)</div>
       
       <div class="tab-row">
-        <button class="tab-btn active" id="tabFileBtn" onclick="switchTxTab('file')">📁 ファイル送信 (画像・バイナリ)</button>
+        <button class="tab-btn active" id="tabFileBtn" onclick="switchTxTab('file')">📁 ファイル送信</button>
         <button class="tab-btn" id="tabTextBtn" onclick="switchTxTab('text')">📝 テキスト送信</button>
+        <button class="tab-btn" id="tabSstvBtn" onclick="switchTxTab('sstv')">📺 SSTV送信</button>
       </div>
 
       <!-- ファイル送信エリア -->
@@ -293,7 +348,69 @@
         <textarea id="txInput" rows="3">常駐型オシレーター構造により長文や大容量画像も途切れず最後まで安定送信します！1234567890</textarea>
       </div>
 
-      <div class="row">
+      <!-- SSTV送信エリア -->
+      <div id="txSstvPane" style="display:none;">
+        <input type="file" id="sstvFileInput" accept="image/*" style="display:none;" onchange="onSstvFileSelected(this)">
+        <div class="file-drop-area" onclick="document.getElementById('sstvFileInput').click()">
+          <span>🖼️ SSTVで送信する画像を選択</span>
+          <div id="sstvFileInfo" class="file-info">画像未選択</div>
+        </div>
+        <div class="sstv-preview-row">
+          <canvas id="sstvPreviewCanvas"></canvas>
+          <span style="font-size:0.7rem; color:var(--muted);">プレビュー（実際の送信時に自動でリサイズされます）</span>
+        </div>
+
+        <div class="sstv-mode-row">
+          <label class="sstv-mode-opt">
+            <input type="radio" name="sstvModeRadio" value="standard" checked>
+            <span class="opt-title">📻 標準SSTV (Robot36 / Scottie S1 / クラシック8秒モノクロ)</span>
+            VISヘッダー付きの周波数変調方式（1500〜2300Hz）。一般的なSSTVソフト・無線機との互換性を意識しています(クラシック8秒モノクロのみVISの存在しない1958年式規格のためVIS無し)。本アプリのデコーダーは簡易実装のため横解像度80pxで復調表示します。
+          </label>
+          <label class="sstv-mode-opt">
+            <input type="radio" name="sstvModeRadio" value="chord">
+            <span class="opt-title">⚡ 和音高速SSTV (独自並列方式)</span>
+            上の多重度・和音長設定を流用し、和音エンジンで画素データを一気に並列伝送。最大192バンド・最短50msシンボル・RGB888トゥルーカラーまで対応し、標準SSTVより大幅に高速ですが、本アプリ同士の通信専用です。
+          </label>
+        </div>
+
+        <div class="row" id="standardSstvModeRow">
+          <label style="font-size:0.75rem; color:var(--muted);">標準SSTV方式:</label>
+          <select id="standardSstvModeSel">
+            <option value="robot36" selected>Robot36 (カラー/YUV・320×240・約36秒)</option>
+            <option value="scottie1">Scottie S1 (クラシック・RGB順次・320×256・約110秒)</option>
+            <option value="scottie1_mono">クラシック8秒モノクロSSTV (1958年式実機準拠・120×120)</option>
+          </select>
+        </div>
+
+        <div class="row" id="sstvStabilizeRow" style="align-items:flex-start;">
+          <label style="font-size:0.72rem; color:var(--muted); display:flex; align-items:center; gap:4px;">
+            <input type="checkbox" id="sstvStabilizeChk" checked style="accent-color:var(--purple);">
+            音声ファイルへ事前レンダリングしてから再生(推奨・安定)
+          </label>
+        </div>
+        <div class="row" id="sstvChordResRow" style="display:none;">
+          <label style="font-size:0.75rem; color:var(--muted);">和音SSTV解像度:</label>
+          <select id="sstvChordResSel">
+            <option value="32x24">32×24 (最速)</option>
+            <option value="48x36" selected>48×36 (標準)</option>
+            <option value="64x48">64×48 (高精細)</option>
+            <option value="96x72">96×72 (高精細・低速)</option>
+            <option value="128x96">128×96 (超高精細・要拡張バンド推奨)</option>
+            <option value="160x120">160×120 (最高精細・低速)</option>
+          </select>
+        </div>
+        <div class="row" id="sstvChordFmtRow" style="display:none;">
+          <label style="font-size:0.75rem; color:var(--muted);">和音SSTV画質モード:</label>
+          <select id="sstvChordFmtSel">
+            <option value="565" selected>RGB565 (65,536色・高速)</option>
+            <option value="888">RGB888トゥルーカラー(1677万色・データ量1.5倍)</option>
+          </select>
+        </div>
+
+        <canvas id="sstvEncodeCanvas" style="display:none;"></canvas>
+      </div>
+
+      <div class="row" id="chordSettingsRow">
         <label style="font-size:0.75rem; color:var(--muted);">多重度 (並列バンド数):</label>
         <select id="polyphonySel">
           <option value="16">16バンド (17音同時 / 1和音=4バイト)</option>
@@ -301,6 +418,8 @@
           <option value="64">64バンド (65音同時 / 1和音=16バイト)</option>
           <option value="96">96バンド (97音同時 / 1和音=24バイト)</option>
           <option value="128" selected>128バンド (129音同時 / 1和音=32バイト) 【超極大・32B一括】</option>
+          <option value="160">160バンド (161音同時 / 1和音=40バイト) 【拡張・~17.7kHzまで使用】</option>
+          <option value="192">192バンド (193音同時 / 1和音=48バイト) 【実験的・~21kHzまで使用、機種によっては不安定】</option>
         </select>
       </div>
 
@@ -312,6 +431,8 @@
           <option value="180">180ms (反響にとても強い・確実)</option>
           <option value="140" selected>140ms (標準・バランス推奨)</option>
           <option value="100">100ms (超高速)</option>
+          <option value="70">70ms (極高速・環境ノイズに弱め)</option>
+          <option value="50">50ms (実験的最高速・静音環境向け)</option>
         </select>
       </div>
 
@@ -322,19 +443,28 @@
         <span id="txStatus" class="badge">READY</span>
       </div>
 
+      <!-- エクスポートボタン -->
+      <div class="export-import-row">
+        <button id="exportBtn" class="btn btn-orange">💾 音声エクスポート (WAV)</button>
+        <span style="font-size:0.7rem; color:var(--muted);">現在の設定で転送音声をファイル保存</span>
+      </div>
+
       <div style="margin-top:8px; border-top:1px dashed var(--border); padding-top:6px; font-size:0.7rem; color:var(--muted); line-height:1.4;">
         <b>✨ 音切れ解消のポイント:</b><br>
         129個のオシレーターを常駐させて周波数をシームレスに切り替える方式に刷新しました。<br>
-        何万バイトの画像データでも音声エンジンがクラッシュせず、最後まで途切れることなく転送できます。<br>
-        <b>受信側もGoertzelアルゴリズムで確定判定を行う方式に刷新。</b>固定FFT窓(旧: 約186ms)が
-        短い和音長とズレてスメアリング(前後の和音の混入)していた問題を解消し、100〜140msでも
-        安定して復号できるようにしました。
+        長大な画像データは自動的に区間分割し、1パート再生中に次パートを裏で生成、隙間なく連結して再生するため、メモリを圧迫せず最後まで途切れることなく転送できます。
       </div>
     </div>
 
     <!-- RX 受信側 -->
     <div class="card">
       <div class="card-title rx">👂 極大多重スペアナ & デコーダー (RX)</div>
+
+      <!-- 受信モード切り替え -->
+      <div class="tab-row">
+        <button class="tab-btn active rxmode" id="rxModeNormalBtn" onclick="setRxMode('normal')">🔀 通常受信 (テキスト/ファイル/和音SSTV)</button>
+        <button class="tab-btn rxmode" id="rxModeSstvBtn" onclick="setRxMode('sstv')">📻 標準SSTV受信 (Robot36)</button>
+      </div>
 
       <div class="row">
         <button id="rxBtn" class="btn btn-green">🎤 受信開始</button>
@@ -346,13 +476,23 @@
         </div>
       </div>
 
+      <!-- インポートボタン＋再生音量 -->
+      <div class="export-import-row" style="border-top-color:var(--border); margin-top:4px;">
+        <button id="importBtn" class="btn btn-purple">📂 音声インポート (ファイル再生＋解析)</button>
+        <label style="font-size:0.7rem; color:var(--muted); display:flex; align-items:center; gap:4px;">
+          再生音量:
+          <input type="range" id="importPlaybackVolume" min="0" max="100" value="50" style="width:80px; accent-color:var(--purple);">
+          <span id="importVolLabel" style="min-width:28px;">50%</span>
+        </label>
+      </div>
+
       <!-- スペアナCanvas -->
       <div class="spec-wrap">
         <canvas id="specCanvas"></canvas>
       </div>
 
       <!-- リアルタイム・マトリクスモニター -->
-      <div class="matrix-wrap">
+      <div class="matrix-wrap" id="matrixWrap">
         <div class="matrix-grid" id="matrixGrid"></div>
       </div>
 
@@ -367,17 +507,36 @@
         </div>
         <div class="ctrl-item">
           <div class="ctrl-hdr">
-            <span>スケルチ (Squelch):</span>
+            <span id="sqLabel">スケルチ (Squelch):</span>
             <span id="sqVal" style="color:var(--yellow); font-weight:bold;">35</span>
           </div>
           <input type="range" id="sqSlider" min="10" max="180" value="35">
         </div>
-        <div class="ctrl-item">
+        <div class="ctrl-item" id="delayCtrlItem">
           <div class="ctrl-hdr">
             <span>サンプリング位置:</span>
             <span id="delayVal" style="color:var(--orange); font-weight:bold;">45%</span>
           </div>
           <input type="range" id="delaySlider" min="20" max="70" value="45">
+        </div>
+      </div>
+
+      <!-- SSTV画像モニター -->
+      <div id="sstvSection" style="margin-top:8px;">
+        <div class="row" id="sstvDecodeModeRow" style="display:none;">
+          <label style="font-size:0.75rem; color:var(--muted);">復調方式:</label>
+          <select id="sstvDecodeModeSel">
+            <option value="robot36" selected>Robot36 (カラー/YUV)</option>
+            <option value="scottie1">Scottie S1 (クラシック/RGB順次)</option>
+            <option value="scottie1_mono">クラシック8秒モノクロSSTV (1958年式・120×120)</option>
+          </select>
+        </div>
+        <div id="sstvCanvasWrap" style="display:none;">
+          <div class="row" style="margin-top:0;">
+            <span id="sstvRxStatus" style="font-size:0.72rem; color:var(--muted);">SSTV: 待機</span>
+          </div>
+          <canvas id="sstvCanvas" style="width:100%; border:1px solid var(--border); border-radius:4px; background:#000; image-rendering:pixelated; margin-top:4px;"></canvas>
+          <button class="btn" style="margin-top:4px;" onclick="saveSstvCanvas()">💾 画像として保存</button>
         </div>
       </div>
 
@@ -394,7 +553,6 @@
           <span id="fileRxName">name: ---</span>
           <span id="fileRxSize">0 / 0 Bytes</span>
         </div>
-        <!-- 受信完了プレビュー -->
         <div id="filePreviewArea" class="file-preview-area" style="display:none;">
           <img id="fileRxThumb" class="file-thumb" style="display:none;">
           <div style="flex:1;">
@@ -492,13 +650,19 @@ updateMeterUI();
 let txMode = 'file';
 let selectedFileBytes = null;
 let selectedFileName = '';
+let sstvSubMode = 'standard';
+let sstvImgElement = null;
 
 function switchTxTab(mode) {
   txMode = mode;
   document.getElementById('tabFileBtn').className = `tab-btn ${mode === 'file' ? 'active' : ''}`;
   document.getElementById('tabTextBtn').className = `tab-btn ${mode === 'text' ? 'active' : ''}`;
+  document.getElementById('tabSstvBtn').className = `tab-btn ${mode === 'sstv' ? 'active' : ''}`;
   document.getElementById('txFilePane').style.display = mode === 'file' ? 'block' : 'none';
   document.getElementById('txTextPane').style.display = mode === 'text' ? 'block' : 'none';
+  document.getElementById('txSstvPane').style.display = mode === 'sstv' ? 'block' : 'none';
+  const showChordSettings = !(mode === 'sstv' && sstvSubMode === 'standard');
+  document.getElementById('chordSettingsRow').style.display = showChordSettings ? 'flex' : 'none';
 }
 
 function onFileSelected(input) {
@@ -513,19 +677,56 @@ function onFileSelected(input) {
   reader.readAsArrayBuffer(file);
 }
 
+document.querySelectorAll('input[name="sstvModeRadio"]').forEach(r => {
+  r.addEventListener('change', (e) => {
+    sstvSubMode = e.target.value;
+    document.getElementById('sstvChordResRow').style.display = sstvSubMode === 'chord' ? 'flex' : 'none';
+    document.getElementById('sstvChordFmtRow').style.display = sstvSubMode === 'chord' ? 'flex' : 'none';
+    document.getElementById('standardSstvModeRow').style.display = sstvSubMode === 'standard' ? 'flex' : 'none';
+    document.getElementById('sstvStabilizeRow').style.display = sstvSubMode === 'standard' ? 'flex' : 'none';
+    document.getElementById('chordSettingsRow').style.display = sstvSubMode === 'chord' ? 'flex' : 'none';
+  });
+});
+
+function onSstvFileSelected(input) {
+  if (!input.files || input.files.length === 0) return;
+  const file = input.files[0];
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      sstvImgElement = img;
+      const prev = document.getElementById('sstvPreviewCanvas');
+      prev.width = 110; prev.height = 82;
+      prev.getContext('2d').drawImage(img, 0, 0, 110, 82);
+      document.getElementById('sstvFileInfo').innerText = `🖼️ ${file.name} (${img.width}×${img.height})`;
+
+      const enc = document.getElementById('sstvEncodeCanvas');
+      enc.width = SSTV_W; enc.height = SSTV_H;
+      enc.getContext('2d').drawImage(img, 0, 0, SSTV_W, SSTV_H);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 /**
  * -------------------------------------------------------------
  * TX (送信機): 【固定オシレーター・プール ＆ スケジューラー方式】
  * -------------------------------------------------------------
- * 1和音ごとにオシレーターを作り直すのを完全に廃止。
- * 常駐オシレーターの周波数パラメータ（AudioParam）を連続更新することで
- * メモリリークと音切れクラッシュを完全に根絶。
  */
 let isTransmitting = false;
 let txMasterGain = null;
 let txClkOsc = null;
 let txDataOscs = [];
 let txSchedulerTimer = null;
+
+// SSTV(標準)専用の送信エンジン状態
+let sstvTxOsc = null;
+let sstvTxGain = null;
+let sstvTxActive = false;
+let sstvTxNodes = [];
+let sstvTxAbort = false;
 
 function cleanupTxEngine() {
   if (txSchedulerTimer) {
@@ -545,10 +746,23 @@ function cleanupTxEngine() {
   });
   txDataOscs = [];
   isTransmitting = false;
+  cleanupSstvTx();
+}
+
+function cleanupSstvTx() {
+  if (sstvTxOsc) {
+    try { sstvTxOsc.stop(); sstvTxOsc.disconnect(); } catch(e){}
+    sstvTxOsc = null;
+  }
+  sstvTxActive = false;
 }
 
 function stopTransmissionImmediately() {
   cleanupTxEngine();
+  sstvTxAbort = true;
+  sstvTxNodes.forEach(src => { try { src.onended = null; src.stop(); src.disconnect(); } catch(e){} });
+  sstvTxNodes = [];
+  if (sstvTxGain) { try { sstvTxGain.disconnect(); } catch(e){} sstvTxGain = null; }
   document.getElementById('sendBtn').disabled = false;
   document.getElementById('stopBtn').disabled = true;
   document.getElementById('txStatus').innerText = 'ABORTED';
@@ -586,26 +800,8 @@ document.getElementById('testChordBtn').addEventListener('click', () => {
   }
 });
 
-async function transmit() {
-  let rawPayload = [];
-
-  if (txMode === 'text') {
-    const text = document.getElementById('txInput').value;
-    if (!text) return;
-    rawPayload = Array.from(new TextEncoder().encode(text));
-  } else {
-    if (!selectedFileBytes) {
-      alert('送信するファイルを選択してください。');
-      return;
-    }
-    const magic = [0x46, 0x49, 0x4C, 0x45]; // 'FILE'
-    const nameBytes = Array.from(new TextEncoder().encode(selectedFileName)).slice(0, 64);
-    const size = selectedFileBytes.length;
-    const sizeBytes = [(size >> 24) & 0xFF, (size >> 16) & 0xFF, (size >> 8) & 0xFF, size & 0xFF];
-    
-    rawPayload = [...magic, nameBytes.length, ...nameBytes, ...sizeBytes, ...Array.from(selectedFileBytes)];
-  }
-
+// 汎用バイト列を和音方式で送信するコアエンジン (ファイル/テキスト/和音SSTV共通)
+function runChordTransmission(rawPayload) {
   const ctx = getCtx();
   cleanupTxEngine();
 
@@ -621,7 +817,6 @@ async function transmit() {
   document.getElementById('stopBtn').disabled = false;
   const statusEl = document.getElementById('txStatus');
 
-  // 1. マスターゲインの構築
   txMasterGain = ctx.createGain();
   const gainPerOsc = 0.85 / (bandCount + 1);
   txMasterGain.gain.setValueAtTime(gainPerOsc, ctx.currentTime);
@@ -629,7 +824,6 @@ async function transmit() {
 
   const tStart = ctx.currentTime + 0.08;
 
-  // 2. 常駐オシレーター群を一括初期化して起動
   txClkOsc = ctx.createOscillator();
   txClkOsc.type = 'sine';
   txClkOsc.connect(txMasterGain);
@@ -642,29 +836,25 @@ async function transmit() {
     txDataOscs.push(osc);
   }
 
-  // 3. プリアンブル（予熱音 160ms: CLK_B）の周波数を予約
   txClkOsc.frequency.setValueAtTime(CLK_FREQS[1], tStart);
   for (let b = 0; b < bandCount; b++) {
     txDataOscs[b].frequency.setValueAtTime(bands[b][0], tStart);
   }
 
-  // オシレーターを一斉スタート
   txClkOsc.start(tStart);
   txDataOscs.forEach(osc => osc.start(tStart));
 
   let scheduledIndex = 0;
-  let nextChordTime = tStart + 0.17; // プリアンブル直後から第1和音(Chunk 0)開始
+  let nextChordTime = tStart + 0.17;
 
-  // 4. 高精度タイムライン先読みスケジューラー（CPU負荷ゼロ）
   function scheduler() {
     if (!isTransmitting) return;
 
-    const lookahead = 0.5; // 500ms先までAudioParamに周波数をスケジュール
+    const lookahead = 0.5;
     while (scheduledIndex < totalChords && nextChordTime < ctx.currentTime + lookahead) {
       const chunk = rawPayload.slice(scheduledIndex * bytesPerChord, (scheduledIndex + 1) * bytesPerChord);
       while (chunk.length < bytesPerChord) chunk.push(0x00);
 
-      // 第1和音(scheduledIndex=0)は確実に CLK_A(650Hz) に反転
       const clk = (scheduledIndex % 2 === 0) ? CLK_FREQS[0] : CLK_FREQS[1];
       txClkOsc.frequency.setValueAtTime(clk, nextChordTime);
 
@@ -684,7 +874,6 @@ async function transmit() {
     statusEl.innerText = `SEND: ${scheduledIndex}/${totalChords} (${bytesSent}/${rawPayload.length}B)`;
 
     if (scheduledIndex >= totalChords) {
-      // 全和音の再生終了を監視
       if (ctx.currentTime >= nextChordTime) {
         cleanupTxEngine();
         document.getElementById('sendBtn').disabled = false;
@@ -699,14 +888,449 @@ async function transmit() {
   scheduler();
 }
 
-document.getElementById('sendBtn').addEventListener('click', transmit);
+async function transmit() {
+  let rawPayload = [];
+
+  if (txMode === 'text') {
+    const text = document.getElementById('txInput').value;
+    if (!text) return;
+    rawPayload = Array.from(new TextEncoder().encode(text));
+  } else {
+    if (!selectedFileBytes) {
+      alert('送信するファイルを選択してください。');
+      return;
+    }
+    const magic = [0x46, 0x49, 0x4C, 0x45];
+    const nameBytes = Array.from(new TextEncoder().encode(selectedFileName)).slice(0, 64);
+    const size = selectedFileBytes.length;
+    const sizeBytes = [(size >> 24) & 0xFF, (size >> 16) & 0xFF, (size >> 8) & 0xFF, size & 0xFF];
+    
+    rawPayload = [...magic, nameBytes.length, ...nameBytes, ...sizeBytes, ...Array.from(selectedFileBytes)];
+  }
+
+  runChordTransmission(rawPayload);
+}
+
+document.getElementById('sendBtn').addEventListener('click', () => {
+  if (txMode === 'sstv') {
+    if (sstvSubMode === 'standard') transmitStandardSSTV();
+    else transmitChordSSTV();
+  } else {
+    transmit();
+  }
+});
 
 
 /**
  * -------------------------------------------------------------
- * RX (受信機): 完全同期・高精度デコーダー
+ * SSTV 共通定数
  * -------------------------------------------------------------
  */
+const SSTV_W = 320;
+const SSTV_H = 240;
+const SSTV_H_SCOTTIE = 256;
+const SSTV_MONO_SIZE = 120;
+const SSTV_H_SCOTTIE_MONO = SSTV_MONO_SIZE;
+const SCOTTIE_MONO_VSYNC_DUR = 0.030;
+const SCOTTIE_MONO_HSYNC_DUR = 0.005;
+const SCOTTIE_MONO_LINE_PERIOD = 1 / 15;
+const SCOTTIE_MONO_CHAN_DUR = SCOTTIE_MONO_LINE_PERIOD - SCOTTIE_MONO_HSYNC_DUR;
+const SSTV_DECODE_W = 80;
+const SSTV_DECODE_W_MONO = 120;
+function getSstvRxDecodeWidth(decodeMode) {
+  return decodeMode === 'scottie1_mono' ? SSTV_DECODE_W_MONO : SSTV_DECODE_W;
+}
+
+function drawImageCover(ctx, img, dw, dh) {
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  const srcRatio = iw / ih, dstRatio = dw / dh;
+  let sx, sy, sw, sh;
+  if (srcRatio > dstRatio) {
+    sh = ih; sw = ih * dstRatio;
+    sx = (iw - sw) / 2; sy = 0;
+  } else {
+    sw = iw; sh = iw / dstRatio;
+    sx = 0; sy = (ih - sh) / 2;
+  }
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
+}
+
+function buildChordImagePayload(resW, resH, format) {
+  const off = document.createElement('canvas');
+  off.width = resW; off.height = resH;
+  const c2d = off.getContext('2d');
+  drawImageCover(c2d, sstvImgElement, resW, resH);
+  const id = c2d.getImageData(0, 0, resW, resH).data;
+
+  const payload = [0x43, 0x49, 0x4D, 0x47, format, (resW >> 8) & 0xFF, resW & 0xFF, (resH >> 8) & 0xFF, resH & 0xFF];
+  for (let i = 0; i < id.length; i += 4) {
+    const r = id[i], g = id[i + 1], b = id[i + 2];
+    if (format === 1) {
+      payload.push(r, g, b);
+    } else {
+      const r5 = (r >> 3) & 0x1F, g6 = (g >> 2) & 0x3F, b5 = (b >> 3) & 0x1F;
+      const val = (r5 << 11) | (g6 << 5) | b5;
+      payload.push((val >> 8) & 0xFF, val & 0xFF);
+    }
+  }
+  return payload;
+}
+
+function transmitChordSSTV() {
+  if (!sstvImgElement) {
+    alert('SSTVで送信する画像を選択してください。');
+    return;
+  }
+  const [w, h] = document.getElementById('sstvChordResSel').value.split('x').map(Number);
+  const format = document.getElementById('sstvChordFmtSel').value === '888' ? 1 : 0;
+  const payload = buildChordImagePayload(w, h, format);
+  runChordTransmission(payload);
+}
+
+/**
+ * -------------------------------------------------------------
+ * 標準SSTV : 送信エンコーダー (Robot36 / Scottie S1 共通基盤)
+ * -------------------------------------------------------------
+ */
+function buildVisSegs(visCode) {
+  const segs = [];
+  segs.push({ type: 'const', freq: 1900, dur: 0.300 });
+  segs.push({ type: 'const', freq: 1200, dur: 0.010 });
+  segs.push({ type: 'const', freq: 1900, dur: 0.300 });
+  segs.push({ type: 'const', freq: 1200, dur: 0.030 });
+  const bits = [];
+  for (let i = 0; i < 7; i++) bits.push((visCode >> i) & 1);
+  let ones = 0;
+  bits.forEach(b => { if (b) ones++; });
+  bits.forEach(b => segs.push({ type: 'const', freq: b ? 1100 : 1300, dur: 0.030 }));
+  const parity = (ones % 2 === 0) ? 0 : 1;
+  segs.push({ type: 'const', freq: parity ? 1100 : 1300, dur: 0.030 });
+  segs.push({ type: 'const', freq: 1200, dur: 0.030 });
+  return segs;
+}
+
+function freqCurve(vals) {
+  const f = new Float32Array(vals.length);
+  for (let i = 0; i < vals.length; i++) f[i] = 1500 + (vals[i] / 255) * 800;
+  return f;
+}
+
+function extractYUVLines(canvas, height) {
+  const c2d = canvas.getContext('2d');
+  const id = c2d.getImageData(0, 0, SSTV_W, height).data;
+  const yLines = [], cLines = [];
+  for (let row = 0; row < height; row++) {
+    const yArr = new Float32Array(SSTV_W);
+    const cArr = new Float32Array(SSTV_W);
+    const isV = (row % 2 === 0);
+    for (let x = 0; x < SSTV_W; x++) {
+      const idx = (row * SSTV_W + x) * 4;
+      const r = id[idx], g = id[idx + 1], b = id[idx + 2];
+      const y = 0.299 * r + 0.587 * g + 0.114 * b;
+      const c = isV ? (0.713 * (r - y) + 128) : (0.564 * (b - y) + 128);
+      yArr[x] = Math.max(0, Math.min(255, y));
+      cArr[x] = Math.max(0, Math.min(255, c));
+    }
+    yLines.push(yArr); cLines.push(cArr);
+  }
+  return { yLines, cLines };
+}
+
+function extractRGBLines(canvas, height) {
+  const c2d = canvas.getContext('2d');
+  const id = c2d.getImageData(0, 0, SSTV_W, height).data;
+  const rLines = [], gLines = [], bLines = [];
+  for (let row = 0; row < height; row++) {
+    const rArr = new Float32Array(SSTV_W), gArr = new Float32Array(SSTV_W), bArr = new Float32Array(SSTV_W);
+    for (let x = 0; x < SSTV_W; x++) {
+      const idx = (row * SSTV_W + x) * 4;
+      rArr[x] = id[idx]; gArr[x] = id[idx + 1]; bArr[x] = id[idx + 2];
+    }
+    rLines.push(rArr); gLines.push(gArr); bLines.push(bArr);
+  }
+  return { rLines, gLines, bLines };
+}
+
+function buildRobot36Schedule(yLines, cLines) {
+  const segs = buildVisSegs(8);
+
+  for (let line = 0; line < SSTV_H; line++) {
+    segs.push({ type: 'const', freq: 1200, dur: 0.009 });
+    segs.push({ type: 'const', freq: 1500, dur: 0.003 });
+    segs.push({ type: 'curve', values: freqCurve(yLines[line]), dur: 0.088 });
+    segs.push({ type: 'const', freq: 1500, dur: 0.0045 });
+    segs.push({ type: 'const', freq: 1900, dur: 0.0015 });
+    segs.push({ type: 'curve', values: freqCurve(cLines[line]), dur: 0.044 });
+  }
+  return segs;
+}
+
+function extractYLines(canvas, width, height) {
+  const c2d = canvas.getContext('2d');
+  const id = c2d.getImageData(0, 0, width, height).data;
+  const yLines = [];
+  for (let row = 0; row < height; row++) {
+    const yArr = new Float32Array(width);
+    for (let x = 0; x < width; x++) {
+      const idx = (row * width + x) * 4;
+      const r = id[idx], g = id[idx + 1], b = id[idx + 2];
+      yArr[x] = Math.max(0, Math.min(255, 0.299 * r + 0.587 * g + 0.114 * b));
+    }
+    yLines.push(yArr);
+  }
+  return yLines;
+}
+
+function buildScottieS1Schedule(rLines, gLines, bLines) {
+  const segs = buildVisSegs(60);
+  const chanDur = 0.13824;
+
+  segs.push({ type: 'const', freq: 1200, dur: 0.009 });
+  for (let line = 0; line < SSTV_H_SCOTTIE; line++) {
+    segs.push({ type: 'const', freq: 1500, dur: 0.0015 });
+    segs.push({ type: 'curve', values: freqCurve(gLines[line]), dur: chanDur });
+    segs.push({ type: 'const', freq: 1500, dur: 0.0015 });
+    segs.push({ type: 'curve', values: freqCurve(bLines[line]), dur: chanDur });
+    segs.push({ type: 'const', freq: 1200, dur: 0.009 });
+    segs.push({ type: 'const', freq: 1500, dur: 0.0015 });
+    segs.push({ type: 'curve', values: freqCurve(rLines[line]), dur: chanDur });
+  }
+  return segs;
+}
+
+function buildScottieS1MonoSchedule(yLines) {
+  const segs = [];
+  segs.push({ type: 'const', freq: 1200, dur: SCOTTIE_MONO_VSYNC_DUR });
+  for (let line = 0; line < SSTV_H_SCOTTIE_MONO; line++) {
+    segs.push({ type: 'const', freq: 1200, dur: SCOTTIE_MONO_HSYNC_DUR });
+    segs.push({ type: 'curve', values: freqCurve(yLines[line]), dur: SCOTTIE_MONO_CHAN_DUR });
+  }
+  return segs;
+}
+
+function transmitStandardSSTV() {
+  if (!sstvImgElement) {
+    alert('SSTVで送信する画像を選択してください。');
+    return;
+  }
+  cleanupTxEngine();
+
+  const modeKey = document.getElementById('standardSstvModeSel').value;
+  const height = (modeKey === 'scottie1') ? SSTV_H_SCOTTIE : (modeKey === 'scottie1_mono') ? SSTV_H_SCOTTIE_MONO : SSTV_H;
+  const width = (modeKey === 'scottie1_mono') ? SSTV_MONO_SIZE : SSTV_W;
+  const modeLabel = (modeKey === 'scottie1') ? 'Scottie S1' : (modeKey === 'scottie1_mono') ? 'クラシック8秒モノクロSSTV' : 'Robot36';
+
+  const encCanvas = document.getElementById('sstvEncodeCanvas');
+  encCanvas.width = width; encCanvas.height = height;
+  drawImageCover(encCanvas.getContext('2d'), sstvImgElement, width, height);
+
+  let segs;
+  if (modeKey === 'scottie1') {
+    const { rLines, gLines, bLines } = extractRGBLines(encCanvas, height);
+    segs = buildScottieS1Schedule(rLines, gLines, bLines);
+  } else if (modeKey === 'scottie1_mono') {
+    const yLines = extractYLines(encCanvas, width, height);
+    segs = buildScottieS1MonoSchedule(yLines);
+  } else {
+    const { yLines, cLines } = extractYUVLines(encCanvas, height);
+    segs = buildRobot36Schedule(yLines, cLines);
+  }
+
+  if (document.getElementById('sstvStabilizeChk').checked) {
+    renderAndPlayStandardSSTV(segs, modeLabel);
+  } else {
+    playLiveStandardSSTV(segs, modeLabel);
+  }
+}
+
+function playLiveStandardSSTV(segs, modeLabel) {
+  const ctx = getCtx();
+  sstvTxGain = ctx.createGain();
+  sstvTxGain.gain.setValueAtTime(0.8, ctx.currentTime);
+  sstvTxGain.connect(ctx.destination);
+  sstvTxOsc = ctx.createOscillator();
+  sstvTxOsc.type = 'sine';
+  sstvTxOsc.connect(sstvTxGain);
+
+  const tStart = ctx.currentTime + 0.1;
+  let t = tStart;
+  segs.forEach(seg => {
+    if (seg.type === 'const') {
+      sstvTxOsc.frequency.setValueAtTime(seg.freq, t);
+    } else {
+      sstvTxOsc.frequency.setValueCurveAtTime(seg.values, t, seg.dur);
+    }
+    t += seg.dur;
+  });
+  const totalDur = t - tStart;
+  sstvTxOsc.start(tStart);
+  sstvTxOsc.stop(t);
+
+  sstvTxActive = true;
+  document.getElementById('sendBtn').disabled = true;
+  document.getElementById('stopBtn').disabled = false;
+  const statusEl = document.getElementById('txStatus');
+  const startPerf = performance.now();
+  const totalMs = totalDur * 1000;
+
+  function progressTick() {
+    if (!sstvTxActive) return;
+    const elapsed = performance.now() - startPerf;
+    const pct = Math.min(100, Math.floor((elapsed / totalMs) * 100));
+    const remainSec = Math.max(0, Math.ceil((totalMs - elapsed) / 1000));
+    statusEl.innerText = `${modeLabel}送信中(ライブ)... ${pct}% (残り約${remainSec}秒)`;
+    if (elapsed >= totalMs) {
+      sstvTxActive = false;
+      document.getElementById('sendBtn').disabled = false;
+      document.getElementById('stopBtn').disabled = true;
+      statusEl.innerText = `${modeLabel}送信完了`;
+      return;
+    }
+    requestAnimationFrame(progressTick);
+  }
+  requestAnimationFrame(progressTick);
+}
+
+function totalSegsDuration(segs) {
+  return segs.reduce((a, s) => a + s.dur, 0);
+}
+
+async function renderSegsToBuffer(segs, sampleRate, leadInSec, tailOutSec) {
+  sampleRate = sampleRate || 44100;
+  leadInSec = leadInSec || 0;
+  tailOutSec = tailOutSec || 0;
+  const total = leadInSec + totalSegsDuration(segs) + tailOutSec;
+  const offlineCtx = new OfflineAudioContext(1, Math.max(1, Math.ceil(total * sampleRate)), sampleRate);
+  const gain = offlineCtx.createGain();
+  gain.gain.value = 0.8;
+  gain.connect(offlineCtx.destination);
+  const osc = offlineCtx.createOscillator();
+  osc.type = 'sine';
+  osc.connect(gain);
+
+  let t = leadInSec;
+  segs.forEach(seg => {
+    if (seg.type === 'const') {
+      osc.frequency.setValueAtTime(seg.freq, t);
+    } else {
+      osc.frequency.setValueCurveAtTime(seg.values, t, seg.dur);
+    }
+    t += seg.dur;
+  });
+  osc.start(leadInSec);
+  osc.stop(t);
+
+  return await offlineCtx.startRendering();
+}
+
+const SSTV_AUTO_SPLIT_TARGET_SEC = 20;
+const SSTV_AUTO_SPLIT_MIN_TOTAL_SEC = 30;
+
+function splitSegsAuto(segs) {
+  const totalDur = totalSegsDuration(segs);
+  if (totalDur <= SSTV_AUTO_SPLIT_MIN_TOTAL_SEC) return [segs];
+
+  const chunks = [];
+  let cur = [];
+  let curDur = 0;
+  for (const seg of segs) {
+    cur.push(seg);
+    curDur += seg.dur;
+    if (curDur >= SSTV_AUTO_SPLIT_TARGET_SEC) {
+      chunks.push(cur);
+      cur = [];
+      curDur = 0;
+    }
+  }
+  if (cur.length) chunks.push(cur);
+  return chunks;
+}
+
+async function renderAndPlayStandardSSTV(segs, modeLabel) {
+  const statusEl = document.getElementById('txStatus');
+  document.getElementById('sendBtn').disabled = true;
+  document.getElementById('stopBtn').disabled = false;
+
+  const chunks = splitSegsAuto(segs);
+  sstvTxAbort = false;
+  sstvTxNodes = [];
+
+  const ctx = getCtx();
+  sstvTxGain = ctx.createGain();
+  sstvTxGain.gain.setValueAtTime(0.8, ctx.currentTime);
+  sstvTxGain.connect(ctx.destination);
+
+  statusEl.innerText = `${modeLabel}: レンダリング中 (1/${chunks.length})...`;
+
+  let buf;
+  try {
+    buf = await renderSegsToBuffer(chunks[0]);
+  } catch (err) {
+    alert('音声レンダリングに失敗しました: ' + err.message);
+    document.getElementById('sendBtn').disabled = false;
+    document.getElementById('stopBtn').disabled = true;
+    return;
+  }
+  if (sstvTxAbort) return;
+
+  const firstStart = ctx.currentTime + 0.15;
+  let playTime = firstStart;
+
+  for (let i = 0; i < chunks.length; i++) {
+    if (sstvTxAbort) return;
+
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(sstvTxGain);
+    src.start(playTime);
+    sstvTxNodes.push(src);
+    src.onended = () => { sstvTxNodes = sstvTxNodes.filter(n => n !== src); };
+
+    const partDur = buf.duration;
+    playTime += partDur;
+
+    statusEl.innerText = chunks.length > 1
+      ? `${modeLabel}: 送信中... パート ${i + 1}/${chunks.length} (${partDur.toFixed(1)}秒)`
+      : `${modeLabel}: 送信中... (${partDur.toFixed(1)}秒)`;
+
+    if (i + 1 < chunks.length) {
+      let nextBuf;
+      try {
+        nextBuf = await renderSegsToBuffer(chunks[i + 1]);
+      } catch (err) {
+        alert('音声レンダリングに失敗しました: ' + err.message);
+        break;
+      }
+      if (sstvTxAbort) return;
+      buf = nextBuf;
+    }
+  }
+
+  document.getElementById('sendBtn').disabled = false;
+  const totalDur = playTime - firstStart;
+  const finishAtCtxTime = playTime;
+
+  function progressTick() {
+    if (sstvTxAbort) return;
+    if (ctx.currentTime >= finishAtCtxTime) {
+      document.getElementById('stopBtn').disabled = true;
+      statusEl.innerText = `${modeLabel}: 送信完了 (合計${totalDur.toFixed(1)}秒${chunks.length > 1 ? '・' + chunks.length + 'パート' : ''})`;
+      return;
+    }
+    const remainSec = Math.max(0, finishAtCtxTime - ctx.currentTime);
+    statusEl.innerText = `${modeLabel}: 送信中... 残り約${remainSec.toFixed(0)}秒`;
+    requestAnimationFrame(progressTick);
+  }
+  requestAnimationFrame(progressTick);
+}
+
+
+/**
+ * -------------------------------------------------------------
+ * 受信関連 (既存)
+ * -------------------------------------------------------------
+ */
+let rxMode = 'normal';
 let rxRunning = false;
 let rxStream = null;
 let hpfNode = null;
@@ -723,83 +1347,84 @@ let scheduledSampleTime = 0;
 let fileInfo = null;
 let isCompleted = false;
 
-/**
- * -------------------------------------------------------------
- * 高精度シンボル判定エンジン (Goertzelアルゴリズム)
- * -------------------------------------------------------------
- * 従来はAnalyserNode内蔵FFT(固定8192点=約186ms窓)のビンから
- * 振幅を推定していたため、100〜140msの短い和音では前後の和音の
- * エネルギーが窓に混入し(スメアリング)、誤判定の温床になっていた。
- *
- * ここでは生の時間波形(getFloatTimeDomainData)を直接取得し、
- * 「知りたい周波数だけ」をGoertzelアルゴリズムでピンポイント計算する。
- * 窓の長さを和音長に合わせて動的に決めるため、症状境界をまたがず、
- * 周波数分解能もその都度最適化される。128バンド×4値=最大512周波数
- * を毎シンボル1回だけ計算すればよいので負荷も許容範囲。
- */
-let rxTimeBuf = null;
+let imgInfo = null;
+let imgDrawnPixels = 0;
+let chordImgData = null;
 
-// 周波数ごとにGoertzel係数(cos/coeff)をキャッシュして再計算を省く
-const goertzelCoeffCache = new Map();
-function getGoertzelCoeff(freq, sampleRate, N) {
-  const key = freq + '_' + sampleRate + '_' + N;
-  let c = goertzelCoeffCache.get(key);
-  if (!c) {
-    const k = Math.round(N * freq / sampleRate);
-    const w = (2 * Math.PI / N) * k;
-    c = { cosine: Math.cos(w), sine: Math.sin(w), coeff: 2 * Math.cos(w) };
-    goertzelCoeffCache.set(key, c);
+let sstvRx = {
+  processor: null, muteGain: null,
+  buffer: null, bufferLen: 0, writePos: 0, sampleRate: 44100,
+  decodeMode: 'robot36', height: SSTV_H, decodeW: SSTV_DECODE_W,
+  locked: false, lineStart: 0, currentLine: 0,
+  lastV: 128, lastU: 128,
+  pendingG: null, pendingB: null,
+  syncCandidates: [], scanPos: 0,
+  pulseActive: false, pulseMaxMag: 0, pulseMaxT: 0,
+  noiseFloor: 0.005, lastMag1200: 0, lastThreshold: 0.01,
+  lastActivityTime: 0,
+  imageData: null,
+  // ファイル再生用
+  isFilePlayback: false,
+  playbackStartTime: 0,
+  fileTotalSamples: 0
+};
+
+function getSstvRxHeight(decodeMode) {
+  if (decodeMode === 'scottie1') return SSTV_H_SCOTTIE;
+  if (decodeMode === 'scottie1_mono') return SSTV_H_SCOTTIE_MONO;
+  return SSTV_H;
+}
+function getSstvRxDisplayWidth(decodeMode) {
+  return decodeMode === 'scottie1_mono' ? SSTV_MONO_SIZE : SSTV_W;
+}
+
+function setRxMode(mode) {
+  rxMode = mode;
+  document.getElementById('rxModeNormalBtn').className = `tab-btn rxmode ${mode === 'normal' ? 'active' : ''}`;
+  document.getElementById('rxModeSstvBtn').className = `tab-btn rxmode ${mode === 'sstv' ? 'active' : ''}`;
+  document.getElementById('sqLabel').innerText = mode === 'sstv' ? 'スケルチ (SSTV感度・大きいほど厳しい)' : 'スケルチ (Squelch)';
+  document.getElementById('matrixWrap').style.display = mode === 'sstv' ? 'none' : 'block';
+  document.getElementById('delayCtrlItem').style.display = mode === 'sstv' ? 'none' : 'flex';
+  document.getElementById('sstvDecodeModeRow').style.display = mode === 'sstv' ? 'flex' : 'none';
+
+  if (mode === 'sstv') {
+    sstvRx.locked = false;
+    sstvRx.currentLine = 0;
+    sstvRx.syncCandidates = [];
+    sstvRx.pulseActive = false;
+    sstvRx.lastV = 128; sstvRx.lastU = 128;
+    sstvRx.pendingG = null; sstvRx.pendingB = null;
+    sstvRx.decodeMode = document.getElementById('sstvDecodeModeSel').value;
+    sstvRx.height = getSstvRxHeight(sstvRx.decodeMode);
+    sstvRx.decodeW = getSstvRxDecodeWidth(sstvRx.decodeMode);
+    sstvRx.scanPos = sstvRx.buffer ? (sstvRx.writePos / sstvRx.sampleRate) : 0;
+    sstvRx.noiseFloor = 0.005;
+    sstvRx.lastActivityTime = performance.now();
+
+    const canvas = document.getElementById('sstvCanvas');
+    canvas.width = sstvRx.decodeW; canvas.height = sstvRx.height;
+    canvas.style.aspectRatio = `${getSstvRxDisplayWidth(sstvRx.decodeMode)} / ${sstvRx.height}`;
+    const c2d = canvas.getContext('2d');
+    sstvRx.imageData = c2d.createImageData(sstvRx.decodeW, sstvRx.height);
+    for (let i = 0; i < sstvRx.imageData.data.length; i += 4) {
+      sstvRx.imageData.data[i] = 30; sstvRx.imageData.data[i+1] = 30; sstvRx.imageData.data[i+2] = 30; sstvRx.imageData.data[i+3] = 255;
+    }
+    c2d.putImageData(sstvRx.imageData, 0, 0);
+
+    document.getElementById('sstvCanvasWrap').style.display = 'block';
+    document.getElementById('textRxWrap').style.display = 'none';
+    document.getElementById('fileRxCard').style.display = 'none';
+    document.getElementById('sstvRxStatus').innerText = rxRunning ? '📻 標準SSTV: 同期待機中...' : 'SSTV: 「受信開始」を押してください';
+  } else {
+    document.getElementById('sstvRxStatus').innerText = 'SSTV: 待機（通常受信中は和音SSTVを自動検出します）';
+    if (!imgInfo) document.getElementById('sstvCanvasWrap').style.display = 'none';
+    if (!fileInfo) document.getElementById('textRxWrap').style.display = 'block';
   }
-  return c;
 }
 
-function goertzelAmplitude(samples, sampleRate, freq) {
-  const N = samples.length;
-  const { cosine, sine, coeff } = getGoertzelCoeff(freq, sampleRate, N);
-  let q0 = 0, q1 = 0, q2 = 0;
-  for (let i = 0; i < N; i++) {
-    q0 = coeff * q1 - q2 + samples[i];
-    q2 = q1;
-    q1 = q0;
-  }
-  const real = q1 - q2 * cosine;
-  const imag = q2 * sine;
-  return Math.sqrt(real * real + imag * imag) / (N / 2); // 振幅推定 (0〜1程度)
-}
-
-// AnalyserNodeのgetByteFrequencyData相当のdBスケール(0-255)に変換し、
-// 既存のスケルチ・スライダー感覚をそのまま維持する
-function amplitudeToByteScale(amp) {
-  const minDb = -100, maxDb = -30;
-  const db = 20 * Math.log10(Math.max(amp, 1e-8));
-  const v = 255 * (db - minDb) / (maxDb - minDb);
-  return Math.max(0, Math.min(255, v));
-}
-
-// 和音境界をまたがないよう、症状長とサンプリング位置から安全な窓長を算出し
-// 「今」から遡った生波形だけを使ってバンドごとの最有力トーンを判定する
-function preciseSampleBands(bands, chordMs) {
-  if (!rxTimeBuf || rxTimeBuf.length !== analyser.fftSize) {
-    rxTimeBuf = new Float32Array(analyser.fftSize);
-  }
-  analyser.getFloatTimeDomainData(rxTimeBuf);
-
-  const sr = audioCtx.sampleRate;
-  const safeRatio = Math.min(samplingDelayRatio, 0.4); // クロック反転からの安全マージン内に収める
-  let winLen = Math.floor(sr * (chordMs / 1000) * safeRatio);
-  winLen = Math.max(256, Math.min(winLen, rxTimeBuf.length));
-  const windowSamples = rxTimeBuf.subarray(rxTimeBuf.length - winLen);
-
-  return bands.map(freqs => {
-    let bestIdx = 0, bestMag = -1;
-    freqs.forEach((f, idx) => {
-      const amp = goertzelAmplitude(windowSamples, sr, f);
-      const scaled = amplitudeToByteScale(amp);
-      if (scaled > bestMag) { bestMag = scaled; bestIdx = idx; }
-    });
-    return { idx: bestIdx, mag: bestMag };
-  });
-}
+document.getElementById('sstvDecodeModeSel').addEventListener('change', () => {
+  if (rxMode === 'sstv') setRxMode('sstv');
+});
 
 const hpfSlider = document.getElementById('hpfSlider');
 const hpfValDisplay = document.getElementById('hpfVal');
@@ -829,18 +1454,21 @@ function clearRxState() {
   receivedBytes = [];
   fileInfo = null;
   isCompleted = false;
+  imgInfo = null;
+  imgDrawnPixels = 0;
+  chordImgData = null;
   document.getElementById('rxHex').innerText = '---';
   document.getElementById('rxText').innerText = '';
   document.getElementById('fileRxCard').style.display = 'none';
   document.getElementById('filePreviewArea').style.display = 'none';
   document.getElementById('fileRxThumb').style.display = 'none';
   document.getElementById('fileProgressBar').style.width = '0%';
-  document.getElementById('textRxWrap').style.display = 'block';
   const bands = getActiveBands();
   bands.forEach((_, i) => {
     const el = document.getElementById(`v${i}`);
     if (el) el.innerText = '--';
   });
+  setRxMode(rxMode);
 }
 document.getElementById('clearBtn').addEventListener('click', clearRxState);
 
@@ -901,10 +1529,49 @@ async function startRx() {
     src.connect(hpfNode);
     hpfNode.connect(analyser);
 
+    sstvRx.sampleRate = ctx.sampleRate;
+    sstvRx.bufferLen = Math.floor(ctx.sampleRate * 15);
+    sstvRx.buffer = new Float32Array(sstvRx.bufferLen);
+    sstvRx.writePos = 0;
+    sstvRx.locked = false;
+    sstvRx.currentLine = 0;
+    sstvRx.syncCandidates = [];
+    sstvRx.pulseActive = false;
+    sstvRx.scanPos = 0;
+    sstvRx.lastV = 128; sstvRx.lastU = 128;
+    sstvRx.pendingG = null; sstvRx.pendingB = null;
+    sstvRx.noiseFloor = 0.005;
+    sstvRx.isFilePlayback = false;
+
+    sstvRx.processor = ctx.createScriptProcessor(4096, 1, 1);
+    sstvRx.processor.onaudioprocess = (e) => {
+      const input = e.inputBuffer.getChannelData(0);
+      const cap = sstvRx.bufferLen;
+      const n = input.length;
+      const startPos = sstvRx.writePos % cap;
+      if (startPos + n <= cap) {
+        sstvRx.buffer.set(input, startPos);
+      } else {
+        const firstPart = cap - startPos;
+        sstvRx.buffer.set(input.subarray(0, firstPart), startPos);
+        sstvRx.buffer.set(input.subarray(firstPart), 0);
+      }
+      sstvRx.writePos += n;
+    };
+    sstvRx.muteGain = ctx.createGain();
+    sstvRx.muteGain.gain.value = 0;
+    src.connect(sstvRx.processor);
+    sstvRx.processor.connect(sstvRx.muteGain);
+    sstvRx.muteGain.connect(ctx.destination);
+
     rxRunning = true;
     document.getElementById('rxBtn').innerText = '⏹ マイク停止';
     document.getElementById('rxBtn').className = 'btn btn-red';
+    if (rxMode === 'sstv') {
+      document.getElementById('sstvRxStatus').innerText = '📻 標準SSTV: 同期待機中...';
+    }
     renderSpecLoop();
+    sstvRxDecodeLoop();
   } catch (err) {
     alert('マイク起動エラー: ' + err.message);
   }
@@ -913,10 +1580,97 @@ async function startRx() {
 function stopRx() {
   if (rxStream) rxStream.getTracks().forEach(t => t.stop());
   rxRunning = false;
+  if (sstvRx.processor) { try { sstvRx.processor.disconnect(); } catch(e){} }
+  if (sstvRx.muteGain) { try { sstvRx.muteGain.disconnect(); } catch(e){} }
   document.getElementById('rxBtn').innerText = '🎤 受信開始';
   document.getElementById('rxBtn').className = 'btn btn-green';
   document.getElementById('rxLed').className = 'led closed';
   document.getElementById('rxStatus').innerText = 'STANDBY';
+}
+
+function goertzelMag(buffer, cap, totalWritten, startIdx, N, sampleRate, freq) {
+  if (N < 4) N = 4;
+  const k = Math.round(N * freq / sampleRate);
+  const w = (2 * Math.PI / N) * k;
+  const cosine = Math.cos(w), sine = Math.sin(w);
+  const coeff = 2 * cosine;
+  let q0 = 0, q1 = 0, q2 = 0;
+  for (let i = startIdx; i < startIdx + N; i++) {
+    const val = (i >= 0 && i < totalWritten) ? buffer[((i % cap) + cap) % cap] : 0;
+    q0 = coeff * q1 - q2 + val;
+    q2 = q1; q1 = q0;
+  }
+  const real = q1 - q2 * cosine;
+  const imag = q2 * sine;
+  return Math.sqrt(real * real + imag * imag) / (N / 2);
+}
+
+function instFreqArray(buffer, cap, totalWritten, startIdx, count, sampleRate, f0) {
+  const w0 = 2 * Math.PI * f0 / sampleRate;
+  const cutoff = 450;
+  const rc = 1 / (2 * Math.PI * cutoff);
+  const dt = 1 / sampleRate;
+  const alpha = dt / (rc + dt);
+  const freqs = new Float32Array(count);
+  let Ilp = 0, Qlp = 0, prevPhase = null;
+  for (let i = 0; i < count; i++) {
+    const idx = startIdx + i;
+    const s = (idx >= 0 && idx < totalWritten) ? buffer[((idx % cap) + cap) % cap] : 0;
+    const theta = w0 * idx;
+    const I = s * Math.cos(theta);
+    const Q = -s * Math.sin(theta);
+    Ilp += alpha * (I - Ilp);
+    Qlp += alpha * (Q - Qlp);
+    const phase = Math.atan2(Qlp, Ilp);
+    if (prevPhase === null) {
+      freqs[i] = f0;
+    } else {
+      let dphase = phase - prevPhase;
+      while (dphase > Math.PI) dphase -= 2 * Math.PI;
+      while (dphase < -Math.PI) dphase += 2 * Math.PI;
+      freqs[i] = f0 + dphase * sampleRate / (2 * Math.PI);
+    }
+    prevPhase = phase;
+  }
+  return freqs;
+}
+
+function decodeChannelColumns(startSec, endSec) {
+  const sr = sstvRx.sampleRate;
+  const decodeW = sstvRx.decodeW;
+  const margin = 0.002;
+  const startSample = Math.round((startSec - margin) * sr);
+  const endSample = Math.round((endSec + margin) * sr);
+  const count = Math.max(1, endSample - startSample);
+  const freqs = instFreqArray(sstvRx.buffer, sstvRx.bufferLen, sstvRx.writePos, startSample, count, sr, 1900);
+  const colW = (endSec - startSec) / decodeW;
+  const out = new Uint8ClampedArray(decodeW);
+  for (let x = 0; x < decodeW; x++) {
+    const ts = startSec + x * colW, te = ts + colW;
+    const iStart = Math.round(ts * sr) - startSample, iEnd = Math.round(te * sr) - startSample;
+    const s = Math.max(0, iStart), e = Math.min(freqs.length, iEnd);
+    let sum = 0, n = 0;
+    for (let i = s; i < e; i++) { sum += freqs[i]; n++; }
+    const avgFreq = n > 0 ? sum / n : 1900;
+    out[x] = Math.max(0, Math.min(255, Math.round((avgFreq - 1500) / 800 * 255)));
+  }
+  return out;
+}
+
+function getExpectedLineIntervalSec() {
+  if (sstvRx.decodeMode === 'scottie1') return 0.42822;
+  if (sstvRx.decodeMode === 'scottie1_mono') return SCOTTIE_MONO_LINE_PERIOD;
+  return 0.150;
+}
+function getLineIntervalTolerance() {
+  if (sstvRx.decodeMode === 'scottie1') return 0.020;
+  if (sstvRx.decodeMode === 'scottie1_mono') return 0.008;
+  return 0.015;
+}
+function getSstvAdaptiveThreshold(marginMultiplier) {
+  const sensitivity = squelchLevel / 35;
+  const m = (marginMultiplier || 1) * sensitivity;
+  return Math.max(0.008, sstvRx.noiseFloor * 3 * m);
 }
 
 function renderSpecLoop() {
@@ -928,10 +1682,11 @@ function renderSpecLoop() {
   canvas.height = rect.height * dpr;
   ctx2d.scale(dpr, dpr);
 
-  const binCount = analyser.frequencyBinCount;
+  const binCount = analyser ? analyser.frequencyBinCount : 0;
   const freqData = new Uint8Array(binCount);
 
   function getMagAt(f) {
+    if (!analyser) return 0;
     const bin = Math.round(f / (audioCtx.sampleRate / analyser.fftSize));
     let m = 0;
     for (let i = Math.max(0, bin - 1); i <= Math.min(binCount - 1, bin + 1); i++) {
@@ -941,17 +1696,19 @@ function renderSpecLoop() {
   }
 
   function loop() {
-    if (!rxRunning) return;
+    if (!rxRunning && !sstvRx.isFilePlayback) {
+      requestAnimationFrame(loop);
+      return;
+    }
     requestAnimationFrame(loop);
 
-    analyser.getByteFrequencyData(freqData);
+    if (analyser) analyser.getByteFrequencyData(freqData);
 
     const w = rect.width;
     const h = rect.height;
-    const maxF = 15000;
+    const maxF = 22000;
     const bands = getActiveBands();
 
-    // 1. 背景クリア & グリッド
     ctx2d.fillStyle = '#010205';
     ctx2d.fillRect(0, 0, w, h);
 
@@ -970,24 +1727,24 @@ function renderSpecLoop() {
       ctx2d.fillText((f/1000) + 'kHz', x + 2, h - 4);
     }
 
-    // 2. スペクトラム波形
-    ctx2d.beginPath();
-    ctx2d.strokeStyle = '#00f0ff';
-    ctx2d.fillStyle = 'rgba(0, 240, 255, 0.08)';
-    ctx2d.lineWidth = 1.2;
-    ctx2d.moveTo(0, h);
-    for (let i = 0; i < binCount; i++) {
-      const f = i * (audioCtx.sampleRate / analyser.fftSize);
-      if (f > maxF) break;
-      const x = (f / maxF) * w;
-      const y = h - (freqData[i] / 255) * h;
-      ctx2d.lineTo(x, y);
+    if (analyser) {
+      ctx2d.beginPath();
+      ctx2d.strokeStyle = '#00f0ff';
+      ctx2d.fillStyle = 'rgba(0, 240, 255, 0.08)';
+      ctx2d.lineWidth = 1.2;
+      ctx2d.moveTo(0, h);
+      for (let i = 0; i < binCount; i++) {
+        const f = i * (audioCtx.sampleRate / analyser.fftSize);
+        if (f > maxF) break;
+        const x = (f / maxF) * w;
+        const y = h - (freqData[i] / 255) * h;
+        ctx2d.lineTo(x, y);
+      }
+      ctx2d.lineTo(w, h);
+      ctx2d.fill();
+      ctx2d.stroke();
     }
-    ctx2d.lineTo(w, h);
-    ctx2d.fill();
-    ctx2d.stroke();
 
-    // 3. スケルチ線
     const sqY = h - (squelchLevel / 255) * h;
     ctx2d.strokeStyle = '#ff3344';
     ctx2d.setLineDash([4, 4]);
@@ -997,100 +1754,96 @@ function renderSpecLoop() {
     ctx2d.font = '10px monospace';
     ctx2d.fillText(`SQUELCH: ${squelchLevel}`, w - 95, sqY - 4);
 
-    // 4. クロック検出
-    const magA = getMagAt(CLK_FREQS[0]);
-    const magB = getMagAt(CLK_FREQS[1]);
-    const maxClkMag = Math.max(magA, magB);
-    const clkOpen = (maxClkMag >= squelchLevel);
-    const activeClk = (magA > magB) ? 0 : 1;
+    if (rxMode === 'normal') {
+      const magA = getMagAt(CLK_FREQS[0]);
+      const magB = getMagAt(CLK_FREQS[1]);
+      const maxClkMag = Math.max(magA, magB);
+      const clkOpen = (maxClkMag >= squelchLevel);
+      const activeClk = (magA > magB) ? 0 : 1;
 
-    // 5. 各バンドの最大ピーク探索
-    const bandHits = bands.map(b => {
-      let best = 0, maxM = 0;
-      b.forEach((f, idx) => {
-        const m = getMagAt(f);
-        if (m > maxM) { maxM = m; best = idx; }
-      });
-      return { idx: best, mag: maxM };
-    });
-
-    // 6. マーカー描画
-    CLK_FREQS.forEach((f, idx) => {
-      const x = (f / maxF) * w;
-      const isHit = (clkOpen && activeClk === idx);
-      ctx2d.strokeStyle = isHit ? '#ffffff' : 'rgba(255,255,255,0.15)';
-      ctx2d.lineWidth = isHit ? 2.5 : 1;
-      ctx2d.beginPath(); ctx2d.moveTo(x, 0); ctx2d.lineTo(x, h); ctx2d.stroke();
-    });
-
-    bands.forEach((b, bIdx) => {
-      const hitIdx = bandHits[bIdx].idx;
-      const hitFreq = b[hitIdx];
-      const x = (hitFreq / maxF) * w;
-      const isHit = (clkOpen && bandHits[bIdx].mag >= squelchLevel * 0.6);
-
-      ctx2d.strokeStyle = isHit ? PALETTE[bIdx % PALETTE.length] : 'rgba(255,255,255,0.04)';
-      ctx2d.lineWidth = isHit ? 1.8 : 0.8;
-      ctx2d.beginPath(); ctx2d.moveTo(x, 0); ctx2d.lineTo(x, h); ctx2d.stroke();
-    });
-
-    // 7. 受信ステータス & 中心サンプリング
-    const led = document.getElementById('rxLed');
-    const rxStatus = document.getElementById('rxStatus');
-
-    if (clkOpen) {
-      led.className = 'led open';
-      rxStatus.innerText = `LOCKED [CLK ${activeClk === 0 ? '650Hz' : '770Hz'}]`;
-      rxStatus.style.color = 'var(--green)';
-
-      bandHits.forEach((hit, i) => {
-        const el = document.getElementById(`v${i}`);
-        if (el) el.innerText = hit.idx.toString(2).padStart(2, '0');
+      const bandHits = bands.map(b => {
+        let best = 0, maxM = 0;
+        b.forEach((f, idx) => {
+          const m = getMagAt(f);
+          if (m > maxM) { maxM = m; best = idx; }
+        });
+        return { idx: best, mag: maxM };
       });
 
-      const now = performance.now();
-      const chordMs = parseInt(document.getElementById('durationSel').value);
+      CLK_FREQS.forEach((f, idx) => {
+        const x = (f / maxF) * w;
+        const isHit = (clkOpen && activeClk === idx);
+        ctx2d.strokeStyle = isHit ? '#ffffff' : 'rgba(255,255,255,0.15)';
+        ctx2d.lineWidth = isHit ? 2.5 : 1;
+        ctx2d.beginPath(); ctx2d.moveTo(x, 0); ctx2d.lineTo(x, h); ctx2d.stroke();
+      });
 
-      if (lastClkState !== null && lastClkState !== activeClk) {
-        isSamplingScheduled = true;
-        scheduledSampleTime = now + (chordMs * samplingDelayRatio);
-      }
-      lastClkState = activeClk;
+      bands.forEach((b, bIdx) => {
+        const hitIdx = bandHits[bIdx].idx;
+        const hitFreq = b[hitIdx];
+        const x = (hitFreq / maxF) * w;
+        const isHit = (clkOpen && bandHits[bIdx].mag >= squelchLevel * 0.6);
 
-      if (isSamplingScheduled && now >= scheduledSampleTime) {
-        isSamplingScheduled = false;
+        ctx2d.strokeStyle = isHit ? PALETTE[bIdx % PALETTE.length] : 'rgba(255,255,255,0.04)';
+        ctx2d.lineWidth = isHit ? 1.8 : 0.8;
+        ctx2d.beginPath(); ctx2d.moveTo(x, 0); ctx2d.lineTo(x, h); ctx2d.stroke();
+      });
 
-        ctx2d.fillStyle = 'rgba(0, 255, 119, 0.2)';
-        ctx2d.fillRect(0, 0, w, h);
+      const led = document.getElementById('rxLed');
+      const rxStatus = document.getElementById('rxStatus');
 
-        // ここが本番の確定判定。フレーム毎の近似FFTビンではなく、
-        // 今この瞬間の生波形からGoertzelで直接、目的の周波数だけを測る。
-        const preciseHits = preciseSampleBands(bands, chordMs);
+      if (clkOpen) {
+        led.className = 'led open';
+        rxStatus.innerText = `LOCKED [CLK ${activeClk === 0 ? '650Hz' : '770Hz'}]`;
+        rxStatus.style.color = 'var(--green)';
 
-        const bytesPerChord = bands.length / 4;
-        const decodedChords = [];
-
-        for (let b = 0; b < bytesPerChord; b++) {
-          const s0 = preciseHits[b * 4 + 0].idx;
-          const s1 = preciseHits[b * 4 + 1].idx;
-          const s2 = preciseHits[b * 4 + 2].idx;
-          const s3 = preciseHits[b * 4 + 3].idx;
-          const byteVal = (s3 << 6) | (s2 << 4) | (s1 << 2) | s0;
-          decodedChords.push(byteVal);
-        }
-
-        onChunkDecoded(decodedChords);
-
-        // マトリクスモニターにも確定値を反映
-        preciseHits.forEach((hit, i) => {
+        bandHits.forEach((hit, i) => {
           const el = document.getElementById(`v${i}`);
           if (el) el.innerText = hit.idx.toString(2).padStart(2, '0');
         });
+
+        const now = performance.now();
+        const chordMs = parseInt(document.getElementById('durationSel').value);
+
+        if (lastClkState !== null && lastClkState !== activeClk) {
+          isSamplingScheduled = true;
+          scheduledSampleTime = now + (chordMs * samplingDelayRatio);
+        }
+        lastClkState = activeClk;
+
+        if (isSamplingScheduled && now >= scheduledSampleTime) {
+          isSamplingScheduled = false;
+
+          ctx2d.fillStyle = 'rgba(0, 255, 119, 0.2)';
+          ctx2d.fillRect(0, 0, w, h);
+
+          const bytesPerChord = bands.length / 4;
+          const decodedChords = [];
+
+          for (let b = 0; b < bytesPerChord; b++) {
+            const s0 = bandHits[b * 4 + 0].idx;
+            const s1 = bandHits[b * 4 + 1].idx;
+            const s2 = bandHits[b * 4 + 2].idx;
+            const s3 = bandHits[b * 4 + 3].idx;
+            const byteVal = (s3 << 6) | (s2 << 4) | (s1 << 2) | s0;
+            decodedChords.push(byteVal);
+          }
+
+          onChunkDecoded(decodedChords);
+        }
+      } else {
+        led.className = 'led closed';
+        rxStatus.innerText = 'SQUELCH CLOSED';
+        rxStatus.style.color = 'var(--muted)';
+        lastClkState = null;
+        isSamplingScheduled = false;
       }
     } else {
-      led.className = 'led closed';
-      rxStatus.innerText = 'SQUELCH CLOSED';
-      rxStatus.style.color = 'var(--muted)';
+      const led = document.getElementById('rxLed');
+      const rxStatus = document.getElementById('rxStatus');
+      led.className = sstvRx.locked ? 'led open' : 'led closed';
+      rxStatus.innerText = sstvRx.locked ? `SSTV LINE ${sstvRx.currentLine}/${SSTV_H}` : 'SSTV SYNC WAIT';
+      rxStatus.style.color = sstvRx.locked ? 'var(--green)' : 'var(--muted)';
       lastClkState = null;
       isSamplingScheduled = false;
     }
@@ -1099,13 +1852,8 @@ function renderSpecLoop() {
   loop();
 }
 
-/**
- * -------------------------------------------------------------
- * スライディング同期 ＆ 復号エンジン
- * -------------------------------------------------------------
- */
 function scanFileHeader(bytes) {
-  const MAGIC = [0x46, 0x49, 0x4C, 0x45]; // 'FILE'
+  const MAGIC = [0x46, 0x49, 0x4C, 0x45];
   for (let i = 0; i <= bytes.length - 9; i++) {
     if (bytes[i] === MAGIC[0] && bytes[i+1] === MAGIC[1] && bytes[i+2] === MAGIC[2] && bytes[i+3] === MAGIC[3]) {
       const nameLen = bytes[i + 4];
@@ -1127,6 +1875,21 @@ function scanFileHeader(bytes) {
             fileSize: fileSize
           };
         }
+      }
+    }
+  }
+  return { found: false };
+}
+
+function scanCImgHeader(bytes) {
+  const MAGIC = [0x43, 0x49, 0x4D, 0x47];
+  for (let i = 0; i <= bytes.length - 9; i++) {
+    if (bytes[i] === MAGIC[0] && bytes[i+1] === MAGIC[1] && bytes[i+2] === MAGIC[2] && bytes[i+3] === MAGIC[3]) {
+      const format = bytes[i + 4];
+      const width = (bytes[i + 5] << 8) | bytes[i + 6];
+      const height = (bytes[i + 7] << 8) | bytes[i + 8];
+      if ((format === 0 || format === 1) && width > 0 && width <= 512 && height > 0 && height <= 512) {
+        return { found: true, dataStartIndex: i + 9, width, height, format, bytesPerPixel: format === 1 ? 3 : 2 };
       }
     }
   }
@@ -1157,13 +1920,27 @@ function onChunkDecoded(byteArr) {
   const hexStr = receivedBytes.map(x => x.toString(16).padStart(2, '0').toUpperCase()).join(' ');
   document.getElementById('rxHex').innerText = hexStr;
 
-  if (!fileInfo) {
+  if (!fileInfo && !imgInfo) {
     const res = scanFileHeader(receivedBytes);
     if (res.found) {
       fileInfo = res;
       document.getElementById('fileRxCard').style.display = 'flex';
       document.getElementById('textRxWrap').style.display = 'none';
       document.getElementById('fileRxName').innerText = `name: ${fileInfo.fileName}`;
+    } else {
+      const cres = scanCImgHeader(receivedBytes);
+      if (cres.found) {
+        imgInfo = cres;
+        imgDrawnPixels = 0;
+        const canvas = document.getElementById('sstvCanvas');
+        canvas.width = imgInfo.width;
+        canvas.height = imgInfo.height;
+        canvas.style.aspectRatio = `${imgInfo.width} / ${imgInfo.height}`;
+        chordImgData = canvas.getContext('2d').createImageData(imgInfo.width, imgInfo.height);
+        document.getElementById('sstvCanvasWrap').style.display = 'block';
+        document.getElementById('textRxWrap').style.display = 'none';
+        document.getElementById('sstvRxStatus').innerText = `⚡ 和音SSTV受信中 (${imgInfo.width}×${imgInfo.height} / ${imgInfo.format === 1 ? 'RGB888' : 'RGB565'})`;
+      }
     }
   }
 
@@ -1198,6 +1975,39 @@ function onChunkDecoded(byteArr) {
         thumb.style.display = 'block';
       }
     }
+  } else if (imgInfo) {
+    const bpp = imgInfo.bytesPerPixel;
+    const availBytes = receivedBytes.length - imgInfo.dataStartIndex;
+    const availPixels = Math.max(0, Math.floor(availBytes / bpp));
+    const totalPixels = imgInfo.width * imgInfo.height;
+    const upTo = Math.min(availPixels, totalPixels);
+
+    for (let p = imgDrawnPixels; p < upTo; p++) {
+      const bIdx = imgInfo.dataStartIndex + p * bpp;
+      let r, g, b;
+      if (imgInfo.format === 1) {
+        r = receivedBytes[bIdx]; g = receivedBytes[bIdx + 1]; b = receivedBytes[bIdx + 2];
+      } else {
+        const hi = receivedBytes[bIdx], lo = receivedBytes[bIdx + 1];
+        const val = (hi << 8) | lo;
+        const r5 = (val >> 11) & 0x1F, g6 = (val >> 5) & 0x3F, b5 = val & 0x1F;
+        r = Math.round(r5 * 255 / 31); g = Math.round(g6 * 255 / 63); b = Math.round(b5 * 255 / 31);
+      }
+      const idx = p * 4;
+      chordImgData.data[idx] = r; chordImgData.data[idx + 1] = g; chordImgData.data[idx + 2] = b; chordImgData.data[idx + 3] = 255;
+    }
+    imgDrawnPixels = upTo;
+
+    const canvas = document.getElementById('sstvCanvas');
+    canvas.getContext('2d').putImageData(chordImgData, 0, 0);
+    const pct = Math.floor((imgDrawnPixels / totalPixels) * 100);
+    document.getElementById('sstvRxStatus').innerText = `⚡ 和音SSTV受信中... ${pct}% (${imgDrawnPixels}/${totalPixels}px)`;
+
+    if (imgDrawnPixels >= totalPixels && !isCompleted) {
+      isCompleted = true;
+      document.getElementById('sstvRxStatus').innerText = `✅ 和音SSTV受信完了 (${imgInfo.width}×${imgInfo.height})`;
+      playSuccessChime();
+    }
   } else {
     try {
       const cleanBytes = receivedBytes.filter(b => b !== 0x00);
@@ -1208,6 +2018,598 @@ function onChunkDecoded(byteArr) {
     }
   }
 }
+
+function sstvRxDecodeLoop() {
+  if (!rxRunning && !sstvRx.isFilePlayback) return;
+  requestAnimationFrame(sstvRxDecodeLoop);
+  if (rxMode !== 'sstv' || !sstvRx.buffer) return;
+
+  // ファイル再生中は再生位置を nowTime として使う
+  let nowTime;
+  if (sstvRx.isFilePlayback) {
+    const elapsed = audioCtx.currentTime - sstvRx.playbackStartTime;
+    nowTime = Math.min(elapsed, sstvRx.fileTotalSamples / sstvRx.sampleRate);
+  } else {
+    nowTime = sstvRx.writePos / sstvRx.sampleRate;
+  }
+
+  const cap = sstvRx.bufferLen;
+
+  if (!sstvRx.locked) {
+    const stepSec = 0.001;
+    let stepsDone = 0;
+    const lineInterval = getExpectedLineIntervalSec();
+    const tolerance = getLineIntervalTolerance();
+    while (sstvRx.scanPos < nowTime - 0.006 && stepsDone < 4000) {
+      stepsDone++;
+      const mag = goertzelMag(
+        sstvRx.buffer, cap, sstvRx.writePos,
+        Math.round(sstvRx.scanPos * sstvRx.sampleRate),
+        Math.round(0.006 * sstvRx.sampleRate),
+        sstvRx.sampleRate, 1200
+      );
+      sstvRx.lastMag1200 = mag;
+      const thresh = getSstvAdaptiveThreshold();
+      sstvRx.lastThreshold = thresh;
+
+      if (mag > thresh) {
+        if (!sstvRx.pulseActive || mag > sstvRx.pulseMaxMag) {
+          sstvRx.pulseActive = true;
+          sstvRx.pulseMaxMag = mag;
+          sstvRx.pulseMaxT = sstvRx.scanPos;
+        }
+      } else {
+        sstvRx.noiseFloor = sstvRx.noiseFloor * 0.995 + mag * 0.005;
+        if (sstvRx.pulseActive) {
+          sstvRx.pulseActive = false;
+          const last = sstvRx.syncCandidates[sstvRx.syncCandidates.length - 1];
+          if (last === undefined || sstvRx.pulseMaxT - last > 0.05) {
+            sstvRx.syncCandidates.push(sstvRx.pulseMaxT);
+            if (sstvRx.syncCandidates.length >= 2) {
+              const a = sstvRx.syncCandidates[sstvRx.syncCandidates.length - 2];
+              const b = sstvRx.syncCandidates[sstvRx.syncCandidates.length - 1];
+              if (Math.abs((b - a) - lineInterval) < tolerance) {
+                sstvRx.locked = true;
+                sstvRx.lineStart = b;
+                sstvRx.currentLine = 0;
+                sstvRx.pendingG = null; sstvRx.pendingB = null;
+                sstvRx.height = getSstvRxHeight(sstvRx.decodeMode);
+                sstvRx.decodeW = getSstvRxDecodeWidth(sstvRx.decodeMode);
+                sstvRx.lastActivityTime = performance.now();
+
+                const canvas = document.getElementById('sstvCanvas');
+                canvas.width = sstvRx.decodeW; canvas.height = sstvRx.height;
+                canvas.style.aspectRatio = `${getSstvRxDisplayWidth(sstvRx.decodeMode)} / ${sstvRx.height}`;
+                const c2d = canvas.getContext('2d');
+                sstvRx.imageData = c2d.createImageData(sstvRx.decodeW, sstvRx.height);
+
+                const modeLabel = sstvRx.decodeMode === 'scottie1' ? 'Scottie S1' : sstvRx.decodeMode === 'scottie1_mono' ? 'クラシック8秒モノクロSSTV' : 'Robot36';
+                document.getElementById('sstvRxStatus').innerText = `📻 ${modeLabel}: 同期ロック！画像受信中...`;
+              }
+            }
+          }
+          sstvRx.pulseMaxMag = 0;
+        }
+      }
+      sstvRx.scanPos += stepSec;
+      if (sstvRx.locked) break;
+    }
+    if (sstvRx.syncCandidates.length > 60) sstvRx.syncCandidates.splice(0, 30);
+
+    if (!sstvRx.locked) {
+      document.getElementById('sstvRxStatus').innerText =
+        `📻 標準SSTV: 同期待機中... [1200Hzレベル:${sstvRx.lastMag1200.toFixed(3)} / しきい値:${sstvRx.lastThreshold.toFixed(3)} / ノイズ床:${sstvRx.noiseFloor.toFixed(3)}]`;
+    }
+  } else {
+    if (performance.now() - sstvRx.lastActivityTime > 5000) {
+      sstvRx.locked = false;
+      sstvRx.syncCandidates = [];
+      sstvRx.pulseActive = false;
+      sstvRx.scanPos = nowTime;
+      document.getElementById('sstvRxStatus').innerText = '⚠️ 標準SSTV: タイムアウトのため再同期します...';
+      return;
+    }
+    const lineInterval = getExpectedLineIntervalSec();
+    try {
+      while (sstvRx.locked && sstvRx.currentLine < sstvRx.height && (sstvRx.lineStart + lineInterval) <= nowTime) {
+        if (sstvRx.decodeMode === 'scottie1') decodeOneScottieLine();
+        else if (sstvRx.decodeMode === 'scottie1_mono') decodeOneScottieMonoLine();
+        else decodeOneSstvLine();
+        sstvRx.lastActivityTime = performance.now();
+      }
+    } catch (err) {
+      console.warn('SSTV decode error, resyncing:', err);
+      sstvRx.locked = false;
+      sstvRx.syncCandidates = [];
+      sstvRx.scanPos = nowTime;
+      return;
+    }
+    if (sstvRx.currentLine >= sstvRx.height) {
+      document.getElementById('sstvRxStatus').innerText = '✅ 標準SSTV: 画像受信完了！';
+      playSuccessChime();
+      sstvRx.locked = false;
+      sstvRx.syncCandidates = [];
+      sstvRx.scanPos = nowTime;
+    }
+  }
+}
+
+function decodeOneSstvLine() {
+  const t0 = sstvRx.lineStart;
+  const sr = sstvRx.sampleRate;
+  const yStart = t0 + 0.012;
+  const cStart = t0 + 0.012 + 0.088 + 0.0045 + 0.0015;
+  const rowIdx = sstvRx.currentLine;
+  const isVLine = (rowIdx % 2 === 0);
+
+  const yVals = decodeChannelColumns(yStart, yStart + 0.088);
+  const cVals = decodeChannelColumns(cStart, cStart + 0.044);
+
+  for (let x = 0; x < sstvRx.decodeW; x++) {
+    if (isVLine) sstvRx.lastV = cVals[x]; else sstvRx.lastU = cVals[x];
+    const Y = yVals[x], V = sstvRx.lastV, U = sstvRx.lastU;
+    let r = Y + 1.403 * (V - 128);
+    let g = Y - 0.344 * (U - 128) - 0.714 * (V - 128);
+    let b = Y + 1.773 * (U - 128);
+    r = Math.max(0, Math.min(255, r)); g = Math.max(0, Math.min(255, g)); b = Math.max(0, Math.min(255, b));
+
+    const idx = (rowIdx * sstvRx.decodeW + x) * 4;
+    sstvRx.imageData.data[idx] = r; sstvRx.imageData.data[idx+1] = g; sstvRx.imageData.data[idx+2] = b; sstvRx.imageData.data[idx+3] = 255;
+  }
+
+  document.getElementById('sstvCanvas').getContext('2d').putImageData(sstvRx.imageData, 0, 0);
+  document.getElementById('sstvRxStatus').innerText = `📻 Robot36: ライン ${rowIdx + 1}/${SSTV_H} 受信中`;
+
+  const predicted = t0 + 0.150;
+  let bestT = predicted, bestMag = 0;
+  const thresh = getSstvAdaptiveThreshold(0.6);
+  for (let tt = predicted - 0.008; tt <= predicted + 0.008; tt += 0.001) {
+    const mag = goertzelMag(sstvRx.buffer, sstvRx.bufferLen, sstvRx.writePos, Math.round(tt * sr), Math.round(0.006 * sr), sr, 1200);
+    if (mag > bestMag) { bestMag = mag; bestT = tt; }
+  }
+  sstvRx.lineStart = (bestMag > thresh) ? bestT : predicted;
+  sstvRx.currentLine++;
+}
+
+function decodeOneScottieLine() {
+  const t0 = sstvRx.lineStart;
+  const sr = sstvRx.sampleRate;
+  const chanDur = 0.13824;
+
+  const redStart = t0 + 0.0105;
+  const redEnd = redStart + chanDur;
+  const greenStart = redEnd + 0.0015;
+  const greenEnd = greenStart + chanDur;
+  const blueStart = greenEnd + 0.0015;
+  const blueEnd = blueStart + chanDur;
+
+  const redVals = decodeChannelColumns(redStart, redEnd);
+  const greenVals = decodeChannelColumns(greenStart, greenEnd);
+  const blueVals = decodeChannelColumns(blueStart, blueEnd);
+
+  const rowIdx = sstvRx.currentLine;
+  const gUse = sstvRx.pendingG || greenVals;
+  const bUse = sstvRx.pendingB || blueVals;
+  for (let x = 0; x < sstvRx.decodeW; x++) {
+    const idx = (rowIdx * sstvRx.decodeW + x) * 4;
+    sstvRx.imageData.data[idx]   = redVals[x];
+    sstvRx.imageData.data[idx+1] = gUse[x];
+    sstvRx.imageData.data[idx+2] = bUse[x];
+    sstvRx.imageData.data[idx+3] = 255;
+  }
+  sstvRx.pendingG = greenVals;
+  sstvRx.pendingB = blueVals;
+
+  document.getElementById('sstvCanvas').getContext('2d').putImageData(sstvRx.imageData, 0, 0);
+  document.getElementById('sstvRxStatus').innerText = `📻 Scottie S1: ライン ${rowIdx + 1}/${SSTV_H_SCOTTIE} 受信中`;
+
+  const predicted = blueEnd;
+  let bestT = predicted, bestMag = 0;
+  const thresh = getSstvAdaptiveThreshold(0.6);
+  for (let tt = predicted - 0.010; tt <= predicted + 0.010; tt += 0.001) {
+    const mag = goertzelMag(sstvRx.buffer, sstvRx.bufferLen, sstvRx.writePos, Math.round(tt * sr), Math.round(0.006 * sr), sr, 1200);
+    if (mag > bestMag) { bestMag = mag; bestT = tt; }
+  }
+  sstvRx.lineStart = (bestMag > thresh) ? bestT : predicted;
+  sstvRx.currentLine++;
+}
+
+function decodeOneScottieMonoLine() {
+  const t0 = sstvRx.lineStart;
+  const sr = sstvRx.sampleRate;
+
+  const yStart = t0 + SCOTTIE_MONO_HSYNC_DUR;
+  const yEnd = yStart + SCOTTIE_MONO_CHAN_DUR;
+
+  const yVals = decodeChannelColumns(yStart, yEnd);
+
+  const rowIdx = sstvRx.currentLine;
+  for (let x = 0; x < sstvRx.decodeW; x++) {
+    const idx = (rowIdx * sstvRx.decodeW + x) * 4;
+    sstvRx.imageData.data[idx]   = yVals[x];
+    sstvRx.imageData.data[idx+1] = yVals[x];
+    sstvRx.imageData.data[idx+2] = yVals[x];
+    sstvRx.imageData.data[idx+3] = 255;
+  }
+
+  document.getElementById('sstvCanvas').getContext('2d').putImageData(sstvRx.imageData, 0, 0);
+  document.getElementById('sstvRxStatus').innerText = `📻 クラシック8秒モノクロSSTV: ライン ${rowIdx + 1}/${SSTV_H_SCOTTIE_MONO} 受信中`;
+
+  const predicted = yEnd;
+  let bestT = predicted, bestMag = 0;
+  const thresh = getSstvAdaptiveThreshold(0.6);
+  for (let tt = predicted - 0.006; tt <= predicted + 0.006; tt += 0.0005) {
+    const mag = goertzelMag(sstvRx.buffer, sstvRx.bufferLen, sstvRx.writePos, Math.round(tt * sr), Math.round(0.004 * sr), sr, 1200);
+    if (mag > bestMag) { bestMag = mag; bestT = tt; }
+  }
+  sstvRx.lineStart = (bestMag > thresh) ? bestT : predicted;
+  sstvRx.currentLine++;
+}
+
+function saveSstvCanvas() {
+  const canvas = document.getElementById('sstvCanvas');
+  canvas.toBlob((blob) => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'sstv_received.png';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  });
+}
+
+
+/**
+ * -------------------------------------------------------------
+ * 新規機能 : 音声エクスポート (WAV)
+ * -------------------------------------------------------------
+ */
+async function exportTransmissionAudio() {
+  const ctx = getCtx();
+  // 現在のモードに応じてペイロード/セグメントを生成
+  let segs = null;
+  let modeLabel = '';
+
+  if (txMode === 'sstv' && sstvSubMode === 'standard') {
+    // 標準SSTV
+    if (!sstvImgElement) {
+      alert('SSTVで送信する画像を選択してください。');
+      return;
+    }
+    const modeKey = document.getElementById('standardSstvModeSel').value;
+    const height = (modeKey === 'scottie1') ? SSTV_H_SCOTTIE : (modeKey === 'scottie1_mono') ? SSTV_H_SCOTTIE_MONO : SSTV_H;
+    const width = (modeKey === 'scottie1_mono') ? SSTV_MONO_SIZE : SSTV_W;
+    const encCanvas = document.getElementById('sstvEncodeCanvas');
+    encCanvas.width = width; encCanvas.height = height;
+    drawImageCover(encCanvas.getContext('2d'), sstvImgElement, width, height);
+
+    if (modeKey === 'scottie1') {
+      const { rLines, gLines, bLines } = extractRGBLines(encCanvas, height);
+      segs = buildScottieS1Schedule(rLines, gLines, bLines);
+      modeLabel = 'Scottie S1';
+    } else if (modeKey === 'scottie1_mono') {
+      const yLines = extractYLines(encCanvas, width, height);
+      segs = buildScottieS1MonoSchedule(yLines);
+      modeLabel = 'クラシック8秒モノクロSSTV';
+    } else {
+      const { yLines, cLines } = extractYUVLines(encCanvas, height);
+      segs = buildRobot36Schedule(yLines, cLines);
+      modeLabel = 'Robot36';
+    }
+  } else {
+    // 和音方式 (テキスト/ファイル/和音SSTV)
+    let rawPayload = [];
+    if (txMode === 'text') {
+      const text = document.getElementById('txInput').value;
+      if (!text) { alert('テキストを入力してください。'); return; }
+      rawPayload = Array.from(new TextEncoder().encode(text));
+      modeLabel = 'テキスト';
+    } else if (txMode === 'file') {
+      if (!selectedFileBytes) { alert('送信するファイルを選択してください。'); return; }
+      const magic = [0x46, 0x49, 0x4C, 0x45];
+      const nameBytes = Array.from(new TextEncoder().encode(selectedFileName)).slice(0, 64);
+      const size = selectedFileBytes.length;
+      const sizeBytes = [(size >> 24) & 0xFF, (size >> 16) & 0xFF, (size >> 8) & 0xFF, size & 0xFF];
+      rawPayload = [...magic, nameBytes.length, ...nameBytes, ...sizeBytes, ...Array.from(selectedFileBytes)];
+      modeLabel = 'ファイル';
+    } else if (txMode === 'sstv' && sstvSubMode === 'chord') {
+      if (!sstvImgElement) { alert('SSTVで送信する画像を選択してください。'); return; }
+      const [w, h] = document.getElementById('sstvChordResSel').value.split('x').map(Number);
+      const format = document.getElementById('sstvChordFmtSel').value === '888' ? 1 : 0;
+      rawPayload = buildChordImagePayload(w, h, format);
+      modeLabel = '和音SSTV';
+    } else {
+      alert('送信モードが不明です。');
+      return;
+    }
+
+    // 和音レンダリング
+    const bandCount = parseInt(document.getElementById('polyphonySel').value);
+    const chordMs = parseInt(document.getElementById('durationSel').value);
+    try {
+      const buffer = await renderChordPayloadToBuffer(rawPayload, bandCount, chordMs);
+      downloadAudioBuffer(buffer, `transmission_${modeLabel}.wav`);
+      return;
+    } catch (err) {
+      alert('和音レンダリングに失敗しました: ' + err.message);
+      return;
+    }
+  }
+
+  // 標準SSTVのレンダリング
+  if (segs) {
+    try {
+      const buffer = await renderSegsToBuffer(segs);
+      downloadAudioBuffer(buffer, `transmission_${modeLabel}.wav`);
+    } catch (err) {
+      alert('SSTVレンダリングに失敗しました: ' + err.message);
+    }
+  }
+}
+
+/**
+ * 和音ペイロードをオフラインレンダリング (複数オシレーター合成)
+ */
+async function renderChordPayloadToBuffer(payload, bandCount, chordMs) {
+  const sr = 44100;
+  const duration = chordMs / 1000;
+  const bytesPerChord = bandCount / 4;
+  const totalChords = Math.ceil(payload.length / bytesPerChord);
+  const totalDur = 0.17 + totalChords * duration + 0.1; // プリアンブル + データ + フェード
+  const offlineCtx = new OfflineAudioContext(1, Math.ceil(totalDur * sr), sr);
+
+  const bands = generateDynamicBands(bandCount);
+  const gain = offlineCtx.createGain();
+  gain.gain.value = 0.7;
+  gain.connect(offlineCtx.destination);
+
+  // クロックオシレーター
+  const clkOsc = offlineCtx.createOscillator();
+  clkOsc.type = 'sine';
+  clkOsc.connect(gain);
+  clkOsc.start(0);
+  clkOsc.stop(totalDur);
+
+  // データオシレーター
+  const dataOscs = [];
+  for (let b = 0; b < bandCount; b++) {
+    const osc = offlineCtx.createOscillator();
+    osc.type = 'sine';
+    osc.connect(gain);
+    osc.start(0);
+    osc.stop(totalDur);
+    dataOscs.push(osc);
+  }
+
+  // プリアンブル
+  const tStart = 0.08;
+  clkOsc.frequency.setValueAtTime(CLK_FREQS[1], tStart);
+  for (let b = 0; b < bandCount; b++) {
+    dataOscs[b].frequency.setValueAtTime(bands[b][0], tStart);
+  }
+
+  let nextChordTime = tStart + 0.17;
+  for (let i = 0; i < totalChords; i++) {
+    const chunk = payload.slice(i * bytesPerChord, (i + 1) * bytesPerChord);
+    while (chunk.length < bytesPerChord) chunk.push(0x00);
+
+    const clk = (i % 2 === 0) ? CLK_FREQS[0] : CLK_FREQS[1];
+    clkOsc.frequency.setValueAtTime(clk, nextChordTime);
+
+    for (let b = 0; b < bytesPerChord; b++) {
+      const val = chunk[b];
+      dataOscs[b * 4 + 0].frequency.setValueAtTime(bands[b * 4 + 0][val & 0x03], nextChordTime);
+      dataOscs[b * 4 + 1].frequency.setValueAtTime(bands[b * 4 + 1][(val >> 2) & 0x03], nextChordTime);
+      dataOscs[b * 4 + 2].frequency.setValueAtTime(bands[b * 4 + 2][(val >> 4) & 0x03], nextChordTime);
+      dataOscs[b * 4 + 3].frequency.setValueAtTime(bands[b * 4 + 3][(val >> 6) & 0x03], nextChordTime);
+    }
+    nextChordTime += duration;
+  }
+
+  return await offlineCtx.startRendering();
+}
+
+/**
+ * AudioBuffer を WAV ファイルとしてダウンロード
+ */
+function downloadAudioBuffer(buffer, filename) {
+  const wav = audioBufferToWav(buffer);
+  const blob = new Blob([wav], { type: 'audio/wav' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename || 'transmission.wav';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function audioBufferToWav(buffer) {
+  const numChannels = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const format = 1; // PCM
+  const bitDepth = 16;
+  const bytesPerSample = bitDepth / 8;
+  const samples = buffer.getChannelData(0);
+  const dataLength = samples.length * bytesPerSample;
+  const headerLength = 44;
+  const totalLength = headerLength + dataLength;
+
+  const wav = new ArrayBuffer(totalLength);
+  const view = new DataView(wav);
+
+  // RIFF
+  writeString(view, 0, 'RIFF');
+  view.setUint32(4, totalLength - 8, true);
+  writeString(view, 8, 'WAVE');
+  writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, format, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * numChannels * bytesPerSample, true);
+  view.setUint16(32, numChannels * bytesPerSample, true);
+  view.setUint16(34, bitDepth, true);
+  writeString(view, 36, 'data');
+  view.setUint32(40, dataLength, true);
+
+  // サンプルデータ
+  const offset = 44;
+  for (let i = 0; i < samples.length; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    const val = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    view.setInt16(offset + i * 2, val, true);
+  }
+
+  return wav;
+}
+
+function writeString(view, offset, str) {
+  for (let i = 0; i < str.length; i++) {
+    view.setUint8(offset + i, str.charCodeAt(i));
+  }
+}
+
+document.getElementById('exportBtn').addEventListener('click', exportTransmissionAudio);
+
+
+/**
+ * -------------------------------------------------------------
+ * 新規機能 : 音声インポート (ファイル再生＋解析)
+ * -------------------------------------------------------------
+ */
+document.getElementById('importBtn').addEventListener('click', () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'audio/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    await importAudioFile(file);
+  };
+  input.click();
+});
+
+async function importAudioFile(file) {
+  // マイク停止
+  if (rxRunning) stopRx();
+
+  const ctx = getCtx();
+  const arrayBuffer = await file.arrayBuffer();
+  let audioBuffer;
+  try {
+    audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+  } catch (err) {
+    alert('音声ファイルのデコードに失敗しました: ' + err.message);
+    return;
+  }
+
+  // バッファを sstvRx にセット (モノラルに変換)
+  const samples = audioBuffer.getChannelData(0);
+  const sr = audioBuffer.sampleRate;
+
+  // リングバッファではなく、新たにバッファを直接保持
+  sstvRx.buffer = new Float32Array(samples);
+  sstvRx.bufferLen = samples.length;
+  sstvRx.writePos = samples.length;
+  sstvRx.sampleRate = sr;
+  sstvRx.scanPos = 0;
+  sstvRx.locked = false;
+  sstvRx.currentLine = 0;
+  sstvRx.syncCandidates = [];
+  sstvRx.pulseActive = false;
+  sstvRx.lastV = 128; sstvRx.lastU = 128;
+  sstvRx.pendingG = null; sstvRx.pendingB = null;
+  sstvRx.noiseFloor = 0.005;
+  sstvRx.lastActivityTime = performance.now();
+  sstvRx.isFilePlayback = true;
+  sstvRx.fileTotalSamples = samples.length;
+
+  // 受信状態リセット
+  receivedBytes = [];
+  fileInfo = null;
+  isCompleted = false;
+  imgInfo = null;
+  imgDrawnPixels = 0;
+  chordImgData = null;
+  document.getElementById('rxHex').innerText = '---';
+  document.getElementById('rxText').innerText = '';
+  document.getElementById('fileRxCard').style.display = 'none';
+  document.getElementById('filePreviewArea').style.display = 'none';
+  document.getElementById('fileRxThumb').style.display = 'none';
+  document.getElementById('fileProgressBar').style.width = '0%';
+  const bands = getActiveBands();
+  bands.forEach((_, i) => {
+    const el = document.getElementById(`v${i}`);
+    if (el) el.innerText = '--';
+  });
+
+  // 再生開始
+  const src = ctx.createBufferSource();
+  src.buffer = audioBuffer;
+  const gainNode = ctx.createGain();
+  const vol = parseInt(document.getElementById('importPlaybackVolume').value) / 100;
+  gainNode.gain.setValueAtTime(vol, ctx.currentTime);
+  src.connect(gainNode);
+  gainNode.connect(ctx.destination);
+
+  sstvRx.playbackStartTime = ctx.currentTime;
+  src.start(sstvRx.playbackStartTime);
+
+  // 再生終了時の処理
+  src.onended = () => {
+    sstvRx.isFilePlayback = false;
+    document.getElementById('rxStatus').innerText = '再生終了';
+  };
+
+  // 解析ループを開始 (rxRunningはtrue扱い)
+  rxRunning = true; // 解析ループを動かす
+  document.getElementById('rxBtn').innerText = '⏹ マイク停止 (インポート中)';
+  document.getElementById('rxBtn').className = 'btn btn-red';
+  document.getElementById('rxLed').className = 'led open';
+  document.getElementById('rxStatus').innerText = `📂 インポート再生中 (${file.name})`;
+
+  // スペアナ用のanalyserが無いので、ダミーとして処理は継続するがスペアナ表示は停止
+  // analyserをnullにしてrenderSpecLoop内で分岐
+  if (analyser) {
+    // analyserを一時的に切断しないが、ファイル再生中はスペアナが使えないので表示を抑制
+    // しかし、renderSpecLoopはanalyserがnullでも動作するように修正済み
+    analyser = null; // 一時的に無効化
+    // 後で復旧する必要はない（インポート後にマイク再開で再作成される）
+  }
+
+  // モードに応じてデコードループを動かす (既にsstvRxDecodeLoopは動いている)
+  if (rxMode === 'sstv') {
+    document.getElementById('sstvRxStatus').innerText = '📻 標準SSTV: ファイル解析中...';
+    document.getElementById('sstvCanvasWrap').style.display = 'block';
+    document.getElementById('textRxWrap').style.display = 'none';
+  } else {
+    document.getElementById('sstvRxStatus').innerText = '和音デコード: ファイル解析中...';
+    document.getElementById('textRxWrap').style.display = 'block';
+    document.getElementById('sstvCanvasWrap').style.display = 'none';
+  }
+
+  // 再生音量スライダー連動
+  const volSlider = document.getElementById('importPlaybackVolume');
+  const volLabel = document.getElementById('importVolLabel');
+  volSlider.oninput = () => {
+    const v = parseInt(volSlider.value) / 100;
+    volLabel.innerText = Math.round(v * 100) + '%';
+    gainNode.gain.setValueAtTime(v, ctx.currentTime);
+  };
+
+  // インポート中は停止ボタンの代わりに再生停止できるようにする (簡易的)
+  // 既存の停止ボタンは送信用なので、ここでは別途ストップ処理は実装しない
+}
+
+// 音量スライダーの初期表示
+document.getElementById('importPlaybackVolume').addEventListener('input', (e) => {
+  document.getElementById('importVolLabel').innerText = e.target.value + '%';
+});
+
+// 受信ループ内でファイル再生中も処理が進むよう、sstvRxDecodeLoop内で nowTime を適宜計算するように修正済み
+
+console.log('✅ エクスポート/インポート機能を追加しました。');
 </script>
 </body>
 </html>
